@@ -620,6 +620,8 @@ canvas#confeti{position:fixed;inset:0;z-index:9;pointer-events:none}
       <div class="evento-hca" id="evPie">EN EL <b>HCA</b></div>
     </div>
     <div class="lema"><span>PENSAR</span><span>•&nbsp;SENTIR&nbsp;•</span><span>ACTUAR</span></div>
+    <div id="cargandoNota" style="display:none;font-size:1.9vh;color:var(--tinta-suave);
+      letter-spacing:.08em">conectando con la base…</div>
   </div>
 </div>
 
@@ -1064,10 +1066,14 @@ function medirVideo(src){
 async function completarDuracionesVideo(){
   const items=(CAMPANIA.pausas.items||[])
     .filter(it=>it && it.tipo==='video' && it.src && !(+it.duracion>0));
-  for(const it of items){
+  if(!items.length) return false;
+  let cambio=false;
+  await Promise.all(items.map(async it=>{
     const d=await medirVideo(it.src);
-    it.duracionAuto = d>0 ? d+1 : 20;   // +1 s de colita para el fundido
-  }
+    const auto = d>0 ? d+1 : 20;        // +1 s de colita para el fundido
+    if(it.duracionAuto!==auto){ it.duracionAuto=auto; cambio=true; }
+  }));
+  return cambio;
 }
 function duracionPausa(it){
   if(+it.duracion>0) return Math.max(3,+it.duracion);
@@ -1482,7 +1488,12 @@ function asomarEditor(){
 /* ---------------- Arranque ---------------- */
 (async function(){
   $('splash').classList.add('visible');     // portada mientras llega la base
-  await cargarDatos();
+  const nota=setTimeout(()=>{               // si demora, avisamos qué pasa
+    const n=$('cargandoNota'); if(n) n.style.display='block';
+  }, 2500);
+  try{ await cargarDatos(); }catch(e){}     // nunca dejar el arranque colgado
+  clearTimeout(nota);
+  const n=$('cargandoNota'); if(n) n.style.display='none';
   $('splash').classList.remove('visible');
   if (!banco.length){ $('errorDatos').style.display='grid'; return; }
   armarPool(); construirCiclo();
