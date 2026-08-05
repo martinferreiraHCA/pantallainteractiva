@@ -266,7 +266,8 @@ input[type=file]{display:none}
   <div class="acciones">
     <span class="estado-base" id="estadoBase">Base: sin conectar</span>
     <span class="aviso-borrador" id="avisoBorrador">Borrador local restaurado</span>
-    <a class="btn btn-fantasma btn-mini" href="index.html" target="_blank"
+    <a class="btn btn-fantasma btn-mini" id="verPantalla" href="index.html"
+       target="_blank" rel="noopener"
        style="text-decoration:none;color:var(--celeste);border-color:var(--celeste)">Ver pantalla ↗</a>
     <button class="btn btn-primario" onclick="publicarEnDrive()">⬆ Publicar en Drive</button>
   </div>
@@ -1656,6 +1657,25 @@ function restaurarBorrador(){
 armarCamposOpciones();
 conectarArchivo('archivoImagen','fImagen','imagen');
 conectarArchivo('archivoVideo','fVideo','video');
+/* "Ver pantalla" a prueba de contextos: sitio publicado, popup bloqueado,
+   archivo local o vista previa embebida. */
+$('verPantalla').addEventListener('click', ev=>{
+  ev.preventDefault();
+  let destino='index.html';
+  try{ destino=new URL('index.html', location.href).href; }catch(e){}
+  const enSitio = location.protocol==='http:' || location.protocol==='https:';
+  let w=null;
+  try{ w=window.open(destino,'_blank'); }catch(e){}
+  if(w) return;                                   // se abrió en pestaña nueva
+  if(enSitio){                                    // popup bloqueado → misma pestaña
+    try{ location.href=destino; return; }catch(e){}
+  }
+  if(location.protocol==='file:'){                // descargado: probar al lado
+    try{ location.href=destino; return; }catch(e){}
+  }
+  avisar('Desde esta vista previa no se puede abrir: entrá al sitio publicado y ahí el botón anda (o abrí index.html directo)');
+});
+
 restaurarBorrador();
 limpiarFormulario();
 pintarLista();
