@@ -1294,6 +1294,8 @@ async function probarCarpeta(avisando){
     if(typeof m!=='object'||Array.isArray(m)) throw 0;
     MAPA_MEDIA = (m.archivos||m.textos) ? (m.archivos||{}) : m;
     TEXTOS_CARPETA = m.textos||{};
+    if(m.version && m.version<33)
+      avisar('Hay una versión nueva del script: actualizá apps-script.gs');
     const nombres=Object.keys(MAPA_MEDIA).sort();
     $('dlDrive').innerHTML=nombres.map(n=>`<option value="${escapar(n)}">`).join('');
     const partes=['✓ Conectada: <b>'+nombres.length+'</b> archivo(s) de media'];
@@ -1302,6 +1304,11 @@ async function probarCarpeta(avisando){
       let n=0; try{n=parseCSV(csv).length;}catch(err){}
       partes.push('<b>preguntas</b> en la carpeta ('+n+') — las pantallas leen de acá');
     } else partes.push('sin archivo de preguntas (usarán el del repo)');
+    if(Array.isArray(m.privados) && m.privados.length)
+      partes.push('<b style="color:var(--coral)">⚠ '+m.privados.length+
+        ' archivo(s) no pudieron hacerse públicos (tu Google lo restringe): '+
+        'las fotos saldrán vía el script, más lento — '+
+        m.privados.slice(0,4).map(escapar).join(', ')+'</b>');
     if(textoCarpeta('calendario.json')!=null) partes.push('calendario ✓');
     const cfgBase=textoCarpeta('config.json');
     if(cfgBase!=null){
