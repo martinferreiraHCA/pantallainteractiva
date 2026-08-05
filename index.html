@@ -459,6 +459,7 @@ canvas#confeti{position:fixed;inset:0;z-index:9;pointer-events:none}
   transition:opacity .4s,transform .4s;
   box-shadow:0 10px 30px rgba(0,0,0,.45)}
 .ir-editor.visible{opacity:.92;transform:none;pointer-events:auto}
+.ir-full{bottom:calc(2.6vh + 6.6vh + 10px)}
 
 /* El logo institucional es azul: sobre fondo oscuro lo pasamos a blanco.
    Si algún día usás un logo a color, sacá la clase logo-blanco del <img>. */
@@ -572,6 +573,8 @@ html[data-media="grande"] .panel-media iframe.yt{max-height:62vh}
 
 <div class="badge-demo" id="badgeDemo">MODO DEMO</div>
 <a class="ir-editor" id="irEditor" href="editor.html" title="Abrir el editor">✎</a>
+<button class="ir-editor ir-full" id="irFull" title="Pantalla completa"
+  style="border:2px solid rgba(var(--celeste-rgb),.5);cursor:pointer;font-family:inherit">⛶</button>
 
 <header class="barra arriba">
   <div class="marca">
@@ -1631,15 +1634,54 @@ async function pedirWakeLock(){
 }
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pedirWakeLock(); });
 
-/* Botón del editor: se asoma con actividad del usuario y se esconde solo */
+/* Botones flotantes (editor + pantalla completa): se asoman con actividad */
 let tmrEditor=null;
 function asomarEditor(){
-  const b=$('irEditor'); b.classList.add('visible');
+  ['irEditor','irFull'].forEach(id=>{const b=$(id); if(b) b.classList.add('visible');});
   clearTimeout(tmrEditor);
-  tmrEditor=setTimeout(()=>b.classList.remove('visible'), 4000);
+  tmrEditor=setTimeout(()=>['irEditor','irFull'].forEach(id=>{
+    const b=$(id); if(b) b.classList.remove('visible');}), 4000);
 }
 ['mousemove','touchstart','keydown'].forEach(ev=>
   addEventListener(ev, asomarEditor, {passive:true}));
+
+/* ---------- Pantalla completa (con prefijos para TVs viejas) ---------- */
+function enPantallaCompleta(){
+  return !!(document.fullscreenElement || document.webkitFullscreenElement ||
+            document.mozFullScreenElement || document.msFullscreenElement);
+}
+function alternarPantallaCompleta(){
+  const raiz=document.documentElement;
+  try{
+    if(!enPantallaCompleta()){
+      const f=raiz.requestFullscreen || raiz.webkitRequestFullscreen ||
+              raiz.mozRequestFullScreen || raiz.msRequestFullscreen;
+      if(f) f.call(raiz);
+    } else {
+      const f=document.exitFullscreen || document.webkitExitFullscreen ||
+              document.mozCancelFullScreen || document.msExitFullscreen;
+      if(f) f.call(document);
+    }
+  }catch(e){}
+}
+(function(){
+  const b=$('irFull'); if(!b) return;
+  const hayApi=document.documentElement.requestFullscreen ||
+    document.documentElement.webkitRequestFullscreen ||
+    document.documentElement.mozRequestFullScreen ||
+    document.documentElement.msRequestFullscreen;
+  if(!hayApi){ b.style.display='none'; return; }   // iPhone y similares
+  b.addEventListener('click', alternarPantallaCompleta);
+  ['fullscreenchange','webkitfullscreenchange','mozfullscreenchange','MSFullscreenChange']
+    .forEach(ev=>document.addEventListener(ev,()=>{
+      const dentro=enPantallaCompleta();
+      b.textContent=dentro?'⤡':'⛶';
+      b.title=dentro?'Salir de pantalla completa':'Pantalla completa';
+    }));
+  addEventListener('keydown', e=>{
+    if((e.key==='f'||e.key==='F') && !e.repeat) alternarPantallaCompleta();
+  });
+})();
 
 /* ---------------- Arranque ---------------- */
 (async function(){
