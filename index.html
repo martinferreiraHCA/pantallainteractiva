@@ -899,9 +899,10 @@ async function leerFuentes(){
   if(url){
     try{
       const t0=Date.now();
-      const t=await traerTexto(url, 12000);
+      const t=await traerTexto(url, 25000);
       const t1=Date.now();
-      F.carpeta=JSON.parse(t); F.crudo+=t;
+      F.carpeta=JSON.parse(t);
+      F.crudo+=t.replace(/"ahora":\d+,?/,'');
       if(F.carpeta && F.carpeta.ahora){
         RELOJ.desfase = F.carpeta.ahora - Math.round((t0+t1)/2);
         RELOJ.fuente = 'servidor';
@@ -933,22 +934,23 @@ async function cargarDatos(){
   const cfgDrive=textoDe(textos,'config.json');
   if(cfgDrive){ try{ aplicarConfig(JSON.parse(cfgDrive), false); }catch(e){} }
 
-  banco=[];
+  let nuevoBanco=[];
   const csvDrive = urlTrae.csv ? null : textoDe(textos,'preguntas.csv');
-  if(csvDrive){ try{ banco=parseCSV(csvDrive); }catch(e){} }
-  if(!banco.length && F.csvRepo){ try{ banco=parseCSV(F.csvRepo); }catch(e){} }
-  modoDemo=!banco.length;
-  if(modoDemo) banco=DEMO;
+  if(csvDrive){ try{ nuevoBanco=parseCSV(csvDrive); }catch(e){} }
+  if(!nuevoBanco.length && F.csvRepo){ try{ nuevoBanco=parseCSV(F.csvRepo); }catch(e){} }
+  nuevoBanco = nuevoBanco.filter(p => (p.activa==null?'1':p.activa) !== '0' && p.pregunta);
+  if(nuevoBanco.length){          // fuentes OK: banco fresco
+    banco=nuevoBanco; modoDemo=false;
+  } else if(!banco.length || modoDemo){   // nunca hubo datos: demo
+    banco=DEMO.filter(p=>p.pregunta); modoDemo=true;
+  }                                // si ya había banco real, se conserva
   $('badgeDemo').style.display=modoDemo?'block':'none';
 
-  calendario={default:{modo:'todas'},dias:{}};
   const calDrive=textoDe(textos,'calendario.json');
   try{
     if(calDrive) calendario=JSON.parse(calDrive);
     else if(F.calRepo) calendario=JSON.parse(F.calRepo);
-  }catch(e){}
-
-  banco = banco.filter(p => (p.activa==null?'1':p.activa) !== '0' && p.pregunta);
+  }catch(e){ /* se conserva el calendario anterior */ }
   firmaDatos=firmaDe(F.crudo);
   aplicarEvento();
 }
@@ -1143,13 +1145,13 @@ setInterval(tictac,1000); tictac();
 })();
 
 /* ---------------- Confeti ---------------- */
-const lienzo=$('confeti'), ctx=lienzo.getContext('2d');
+const lienzo=$('confeti'), ctx=lienzo&&lienzo.getContext?lienzo.getContext('2d'):null;
 let particulas=[];
 const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
 function ajustarLienzo(){lienzo.width=innerWidth;lienzo.height=innerHeight;}
 addEventListener('resize',ajustarLienzo); ajustarLienzo();
 function estallar(x,y){
-  if (sinMovimiento) return;
+  if (sinMovimiento || !ctx) return;
   const colores=['#ffc533','#4fc3f7','#f6f9ff','#1c5cb8'];
   for(let i=0;i<130;i++){
     const a=Math.random()*Math.PI*2, v=4+Math.random()*9;
@@ -1437,7 +1439,9 @@ function asomarEditor(){
 
 /* ---------------- Arranque ---------------- */
 (async function(){
+  $('splash').classList.add('visible');     // portada mientras llega la base
   await cargarDatos();
+  $('splash').classList.remove('visible');
   if (!banco.length){ $('errorDatos').style.display='grid'; return; }
   armarPool(); construirCiclo();
   pedirWakeLock(); vigilarCambios();
