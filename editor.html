@@ -79,6 +79,13 @@ header .acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   border:1.5px solid var(--coral)}
 .btn-mini{padding:6px 11px;font-size:13px}
 
+.grupo-opciones{display:flex;gap:6px;flex-wrap:wrap}
+.grupo-opciones b{cursor:pointer;font-weight:700;font-size:13px;
+  padding:7px 14px;border-radius:999px;border:1.5px solid var(--borde);
+  color:var(--tinta-suave);transition:all .12s}
+.grupo-opciones b:hover{border-color:var(--celeste)}
+.grupo-opciones b.activo{background:var(--azul-hca);color:#fff;
+  border-color:var(--azul-hca)}
 .selector-color{display:flex;gap:7px;margin-top:8px}
 .selector-color b{width:24px;height:24px;border-radius:50%;cursor:pointer;
   border:2.5px solid transparent;transition:transform .12s}
@@ -484,17 +491,39 @@ input[type=file]{display:none}
       </div>
     </div>
 
+    <div class="panel" style="margin-bottom:22px">
+      <h3 style="margin-bottom:6px">Estilo de la pantalla</h3>
+      <p class="nota" style="margin-bottom:14px">El look general de todas las
+      pantallas: colores, forma, cuánta animación y el tamaño de las imágenes.</p>
+      <div class="fila dos">
+        <div><label>Tema de color</label>
+          <div class="grupo-opciones" data-campo="tema" data-valores="hca:HCA azul,grafito:Grafito,pizarra:Pizarra"></div></div>
+        <div><label>Forma</label>
+          <div class="grupo-opciones" data-campo="forma" data-valores="redondo:Redondo,cuadrado:Cuadrado"></div></div>
+      </div>
+      <div class="fila dos" style="margin-top:14px">
+        <div><label>Animaciones</label>
+          <div class="grupo-opciones" data-campo="animaciones" data-valores="completas:Completas,suaves:Suaves,minimas:Mínimas"></div></div>
+        <div><label>Tamaño de imágenes en preguntas</label>
+          <div class="grupo-opciones" data-campo="mediaTam" data-valores="chica:Chica,normal:Normal,grande:Grande"></div></div>
+      </div>
+    </div>
+
     <div class="panel">
       <h3 style="margin-bottom:6px">Pausas entre preguntas</h3>
       <p class="nota" style="margin-bottom:14px">Como en las pantallas de los ómnibus:
       cada tanto se corta el juego y aparece la portada, un video promocional o una
       plaqueta de comunicación. Rotan en orden.</p>
       <div class="fila dos" style="align-items:end">
-        <div><label>Mostrar una pausa cada … preguntas</label>
+        <div><label>Pausa cada … preguntas (0 = sin pausas)</label>
           <input type="number" id="pausasCada" min="0" max="50" value="8"
             oninput="config.pausas.cada=Math.max(0,+this.value||0);guardarBorrador()"></div>
-        <p class="nota" style="margin:0 0 10px">0 = juego corrido, sin pausas.</p>
+        <div><label>Pausas seguidas en cada corte</label>
+          <input type="number" id="pausasTanda" min="1" max="6" value="1"
+            oninput="config.pausas.porTanda=Math.min(6,Math.max(1,+this.value||1));guardarBorrador()"></div>
       </div>
+      <p class="nota" style="margin:8px 0 0">Con 3 seguidas podés encadenar, por
+      ejemplo, dos plaquetas y un video antes de volver a las preguntas.</p>
       <div id="listaPausas" style="display:grid;gap:12px;margin:14px 0"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-secundario" onclick="agregarPausa('splash')">＋ Portada</button>
@@ -599,6 +628,7 @@ let config = {
           color1:'dorado', color2:'celeste', emoji:''},
   pausas:{cada:8, items:[{tipo:'splash', duracion:6}]},
   tiempos:{pregunta:30, reveal:9},
+  pantalla:{tema:'hca', forma:'redondo', animaciones:'completas', mediaTam:'normal'},
   carpetaMedia:''
 };
 let mesVisto = new Date();
@@ -1031,7 +1061,9 @@ $('impConfig').addEventListener('change', async ev=>{
       items:Array.isArray(c.pausas.items)?c.pausas.items:[]};
     if(typeof c.carpetaMedia==='string') config.carpetaMedia=c.carpetaMedia;
     if(c.tiempos) config.tiempos={...config.tiempos,...c.tiempos};
-    pintarEvento(); pintarRitmo(); pintarPausas(); pintarCarpeta(); guardarBorrador();
+    if(c.pantalla) config.pantalla={...config.pantalla,...c.pantalla};
+    if(c.pausas?.porTanda) config.pausas.porTanda=+c.pausas.porTanda||1;
+    pintarEvento(); pintarRitmo(); pintarEstilo(); pintarEstilo(); pintarPausas(); pintarCarpeta(); guardarBorrador();
     avisar('Config importada ✓');
   }catch(e){ avisar('Ese JSON no es válido'); }
 });
@@ -1053,6 +1085,8 @@ async function traerDelSitio(){
       if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
         items:Array.isArray(c.pausas.items)?c.pausas.items:config.pausas.items};
       if(c.tiempos) config.tiempos={...config.tiempos,...c.tiempos};
+      if(c.pantalla) config.pantalla={...config.pantalla,...c.pantalla};
+      if(c.pausas && c.pausas.porTanda) config.pausas.porTanda=+c.pausas.porTanda||1;
     }catch(e){} }
   }
   if(!deCarpeta){
@@ -1079,7 +1113,7 @@ async function traerDelSitio(){
     }
   }
   limpiarFormulario(); pintarLista(); pintarCalendario();
-  pintarEvento(); pintarRitmo(); pintarPausas(); pintarCarpeta(); guardarBorrador();
+  pintarEvento(); pintarRitmo(); pintarEstilo(); pintarPausas(); pintarCarpeta(); guardarBorrador();
   avisar((deCarpeta?'Datos de la carpeta de Drive':'Datos del sitio')+
     ' cargados: '+preguntas.length+' preguntas');
 }
@@ -1123,6 +1157,22 @@ function tocarTiempos(){
 function pintarRitmo(){
   $('tiempoPregunta').value=config.tiempos?.pregunta??30;
   $('tiempoReveal').value=config.tiempos?.reveal??9;
+}
+function pintarEstilo(){
+  document.querySelectorAll('.grupo-opciones').forEach(g=>{
+    const campo=g.dataset.campo;
+    const actual=config.pantalla?.[campo] ??
+      {tema:'hca',forma:'redondo',animaciones:'completas',mediaTam:'normal'}[campo];
+    g.innerHTML=g.dataset.valores.split(',').map(par=>{
+      const [v,t]=par.split(':');
+      return `<b class="${v===actual?'activo':''}"
+        onclick="elegirEstilo('${campo}','${v}')">${t}</b>`;
+    }).join('');
+  });
+}
+function elegirEstilo(campo,valor){
+  config.pantalla={...config.pantalla,[campo]:valor};
+  pintarEstilo(); guardarBorrador();
 }
 
 /* ---------- Diseñador de portada ---------- */
@@ -1258,7 +1308,7 @@ async function probarCarpeta(avisando){
       partes.push('config ✓');
       try{
         const c=JSON.parse(cfgBase);
-        if(!c.tiempos)
+        if(!c.tiempos || !c.pantalla)
           partes.push('<b style="color:var(--coral)">⚠ el script de Drive es viejo: '+
             'copiá apps-script.gs de nuevo y creá una NUEVA VERSIÓN de la implementación</b>');
       }catch(err3){}
@@ -1338,6 +1388,7 @@ function textoCarpeta(nombre){
 const NOMBRE_PAUSA={splash:'Portada del evento', plaqueta:'Plaqueta', video:'Video'};
 function pintarPausas(){
   $('pausasCada').value=config.pausas.cada;
+  $('pausasTanda').value=config.pausas.porTanda||1;
   const cont=$('listaPausas'); cont.innerHTML='';
   if(!config.pausas.items.length)
     cont.innerHTML='<p class="nota">No hay pausas: el juego corre sin cortes.</p>';
@@ -1364,6 +1415,23 @@ function pintarPausas(){
             oninput="tocarPausa(${i},'imagen',this.value)"></div>
         <label class="btn btn-fantasma btn-archivo btn-mini">Subir imagen
           <input type="file" accept="image/*" onchange="archivoPausa(event,${i},'imagen')"></label>
+      </div>
+      <div class="fila dos" style="margin-top:10px">
+        <div><label>Diseño</label>
+          <select onchange="tocarPausa(${i},'layout',this.value)">
+            ${['lateral:Texto + imagen','full:Imagen a pantalla completa',
+               'banda:Banda inferior','texto:Solo texto gigante'].map(o=>{
+              const [v,t]=o.split(':');
+              return `<option value="${v}" ${(it.layout||'lateral')===v?'selected':''}>${t}</option>`;
+            }).join('')}
+          </select></div>
+        <div><label>Entrada</label>
+          <select onchange="tocarPausa(${i},'anim',this.value)">
+            ${['sube:Sube','zoom:Zoom','lateral:Desliza'].map(o=>{
+              const [v,t]=o.split(':');
+              return `<option value="${v}" ${(it.anim||'sube')===v?'selected':''}>${t}</option>`;
+            }).join('')}
+          </select></div>
       </div>`;
     } else if(it.tipo==='video'){
       cuerpo=`
@@ -1416,6 +1484,8 @@ function restaurarBorrador(){
       if(b.config){
         if(typeof b.config.carpetaMedia==='string') config.carpetaMedia=b.config.carpetaMedia;
         if(b.config.tiempos) config.tiempos={...config.tiempos,...b.config.tiempos};
+        if(b.config.pantalla) config.pantalla={...config.pantalla,...b.config.pantalla};
+        if(b.config.pausas?.porTanda) config.pausas.porTanda=+b.config.pausas.porTanda||1;
         config.evento={...config.evento,...(b.config.evento||{})};
         if(b.config.pausas) config.pausas={
           cada:Math.max(0,+b.config.pausas.cada||0),
@@ -1438,6 +1508,7 @@ pintarLista();
 pintarPlantillas();
 pintarEvento();
 pintarRitmo();
+pintarEstilo();
 pintarPausas();
 pintarCarpeta();
 if(config.carpetaMedia) probarCarpeta(false);
