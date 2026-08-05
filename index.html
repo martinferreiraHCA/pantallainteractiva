@@ -678,7 +678,26 @@ function idDeMedia(ruta){
   }
   return null;
 }
-/* Carga una imagen con respaldo: Drive prueba sus 3 endpoints; lo local va directo */
+/* Carga una imagen con respaldo: Drive prueba sus 3 endpoints públicos y,
+   si todos fallan (p. ej. el archivo no es público), la pide al Apps Script,
+   que la sirve con la cuenta del dueño. Con caché para no repedir. */
+const CACHE_PROXY={};
+async function imagenPorProxy(im, id, siFalla){
+  try{
+    if(!CAMPANIA.carpetaMedia) throw 0;
+    if(!CACHE_PROXY[id]){
+      const t=await traerTexto(
+        CAMPANIA.carpetaMedia+'?media='+encodeURIComponent(id), 20000);
+      const r=JSON.parse(t);
+      if(!r.ok) throw 0;
+      const claves=Object.keys(CACHE_PROXY);
+      if(claves.length>30) delete CACHE_PROXY[claves[0]];
+      CACHE_PROXY[id]='data:'+r.mime+';base64,'+r.base64;
+    }
+    im.onerror=siFalla||null;
+    im.src=CACHE_PROXY[id];
+  }catch(e){ if(siFalla) siFalla(); }
+}
 function cargarImagen(im, ruta, siFalla){
   im.referrerPolicy='no-referrer';
   const id=idDeMedia(ruta);
@@ -689,7 +708,7 @@ function cargarImagen(im, ruta, siFalla){
   im.onerror=function(){
     i++;
     if(i<urls.length) im.src=urls[i];
-    else if(siFalla) siFalla();
+    else imagenPorProxy(im, id, siFalla);
   };
   im.src=urls[0];
 }
