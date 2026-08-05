@@ -724,6 +724,37 @@ function idDeMedia(ruta){
   }
   return null;
 }
+/* Videos de Drive: uc?export=download mete una página intersticial en
+   archivos grandes. drive.usercontent con confirm=t la saltea. Se prueba
+   en cadena, con timeout por si queda cargando sin error. */
+function candidatosVideo(ruta){
+  const id=idDeMedia(ruta);
+  if(!id) return [ruta];
+  return [
+    'https://drive.usercontent.google.com/download?id='+id+'&export=download&confirm=t',
+    'https://drive.google.com/uc?export=download&id='+id+'&confirm=t',
+    'https://drive.google.com/uc?export=download&id='+id
+  ];
+}
+function cargarVideo(v, ruta, alFallar){
+  const urls=candidatosVideo(ruta); let i=0, tm=null;
+  v.referrerPolicy='no-referrer';
+  const fallo=()=>{
+    clearTimeout(tm); i++;
+    if(i<urls.length) intentar();
+    else { v.onerror=null; v.onplaying=null; if(alFallar) alFallar(); }
+  };
+  const intentar=()=>{
+    v.onerror=fallo;
+    v.onplaying=()=>{ clearTimeout(tm); };
+    clearTimeout(tm);
+    tm=setTimeout(fallo, 9000);         // ni reproduce ni falla → siguiente
+    v.src=urls[i];
+    try{ const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+  };
+  intentar();
+}
+
 /* Carga una imagen con respaldo: Drive prueba sus 3 endpoints públicos y,
    si todos fallan (p. ej. el archivo no es público), la pide al Apps Script,
    que la sirve con la cuenta del dueño. Con caché para no repedir. */
@@ -1060,7 +1091,7 @@ function medirVideo(src){
     v.onloadedmetadata=()=>{ clearTimeout(tm);
       fin(isFinite(v.duration)&&v.duration>0 ? Math.max(3, Math.ceil(v.duration)) : -1); };
     v.onerror=()=>{ clearTimeout(tm); fin(-1); };
-    try{ v.src=resolverMedia(src,'video'); }catch(e){ clearTimeout(tm); fin(-1); }
+    try{ v.src=candidatosVideo(src)[0]; }catch(e){ clearTimeout(tm); fin(-1); }
   });
 }
 async function completarDuracionesVideo(){
@@ -1246,10 +1277,9 @@ function pintarPregunta(p,n){
   let hayMedia=false;
   if (p.video){
     const v=document.createElement('video');
-    v.referrerPolicy='no-referrer';
-    v.src=resolverMedia(p.video,'video'); v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true;
-    v.onerror=()=>{pm.innerHTML='';escena.classList.remove('con-media');};
+    v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true;
     pm.appendChild(v); hayMedia=true;
+    cargarVideo(v, p.video, ()=>{pm.innerHTML='';escena.classList.remove('con-media');});
   } else if (p.imagen){
     const im=document.createElement('img');
     im.alt='';
@@ -1359,19 +1389,18 @@ async function mostrarPausa(it, seg, off){
   let usaSplash = !it || (it.tipo!=='video' && it.tipo!=='plaqueta');
 
   if (it && it.tipo==='video' && it.src){
-    video.onerror=()=>{ P.classList.remove('visible','con-video');
-                        S.classList.add('visible'); };
-    video.referrerPolicy='no-referrer';
     video.loop=false;                       // se ve completo, una sola vez
+    video.onended=null;                     // al terminar queda el último cuadro
     video.onloadedmetadata=()=>{            // en vivo: arrancar donde va la emisión
       if (off>1 && isFinite(video.duration)){
         try{ video.currentTime=Math.min(off, Math.max(0,video.duration-0.3)); }catch(e){}
       }
     };
-    video.onended=null;                     // al terminar queda el último cuadro
-    video.src=resolverMedia(it.src,'video');
     P.classList.add('con-video');
-    video.play().catch(()=>{});
+    cargarVideo(video, it.src, ()=>{        // todos los endpoints fallaron
+      P.classList.remove('visible','con-video');
+      S.classList.add('visible');
+    });
   } else if (it && it.tipo==='plaqueta'){
     $('plaKicker').textContent = it.kicker || 'NOVEDADES';
     $('plaTitulo').textContent = it.titulo || '';
@@ -1426,7 +1455,8 @@ async function mostrarPausa(it, seg, off){
   await esperar(T.transPausa*1000);
   P.classList.remove('lay-full','lay-banda','lay-texto','con-clima',
                      'ent-sube','ent-zoom','ent-lateral');
-  video.pause(); video.removeAttribute('src'); video.load();
+  video.onerror=null; video.onplaying=null; video.onloadedmetadata=null;
+  try{ video.pause(); video.removeAttribute('src'); video.load(); }catch(e){}
 }
 
 /* ---------------- Ciclos ---------------- */
