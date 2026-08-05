@@ -1481,6 +1481,62 @@ async function publicarEnDrive(){
     avisar('No se pudo publicar'+(e.message?': '+e.message:' (revisá URL y clave)'));
   }
 }
+function idDeMedia(ruta){
+  ruta=String(ruta||'').trim();
+  if(/drive\.google\.com|docs\.google\.com/.test(ruta)) return idDrive(ruta);
+  if(!/[\/:]/.test(ruta)){
+    if(MAPA_MEDIA[ruta]) return MAPA_MEDIA[ruta];
+    const k=Object.keys(MAPA_MEDIA).find(n=>n.toLowerCase()===ruta.toLowerCase());
+    if(k) return MAPA_MEDIA[k];
+  }
+  return null;
+}
+function candidatosVideoEd(ruta){
+  const id=idDeMedia(ruta);
+  if(!id) return [resolverMedia(ruta,'video')];
+  return [
+    'https://drive.usercontent.google.com/download?id='+id+'&export=download&confirm=t',
+    'https://drive.google.com/uc?export=download&id='+id+'&confirm=t',
+    'https://drive.google.com/uc?export=download&id='+id
+  ];
+}
+function probarVideo(i){
+  const it=config.pausas.items[i];
+  if(!it||!it.src){ avisar('Primero indicá el video'); return; }
+  let caja=$('cajaProbarVideo');
+  if(!caja){
+    caja=document.createElement('div'); caja.id='cajaProbarVideo';
+    caja.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(11,15,36,.92);'+
+      'display:grid;place-items:center;padding:24px';
+    caja.innerHTML='<div style="max-width:900px;width:100%;background:#fff;border-radius:16px;'+
+      'padding:18px;display:grid;gap:12px">'+
+      '<b style="font-family:\'Baloo 2\'">Prueba de reproducción</b>'+
+      '<video id="videoPrueba" controls muted playsinline style="width:100%;max-height:60vh;'+
+      'background:#000;border-radius:12px"></video>'+
+      '<p class="nota" id="estadoPrueba"></p>'+
+      '<button class="btn btn-secundario" onclick="cerrarPrueba()">Cerrar</button></div>';
+    document.body.appendChild(caja);
+  }
+  caja.style.display='grid';
+  const v=$('videoPrueba'), est=$('estadoPrueba');
+  const urls=candidatosVideoEd(it.src); let k=0;
+  est.textContent='Probando endpoint 1 de '+urls.length+'…';
+  const fallo=()=>{ k++;
+    if(k<urls.length){ est.textContent='Probando endpoint '+(k+1)+' de '+urls.length+'…'; v.src=urls[k]; const pk=v.play(); if(pk&&pk.catch) pk.catch(()=>{}); }
+    else est.innerHTML='<b style="color:var(--coral)">Drive no está sirviendo este video.</b> '+
+      'Suele pasar con archivos muy pesados (≳100 MB) o sin permiso público. '+
+      'Opciones: comprimirlo, o subirlo al repositorio del sitio.';
+  };
+  v.onerror=fallo;
+  v.onplaying=()=>{ est.textContent='✓ Reproduce bien (endpoint '+(k+1)+'). En pantalla va a andar.'; };
+  v.src=urls[0]; const pr=v.play(); if(pr&&pr.catch) pr.catch(()=>{});
+}
+function cerrarPrueba(){
+  const caja=$('cajaProbarVideo'); if(!caja) return;
+  const v=$('videoPrueba');
+  try{ v.pause(); v.removeAttribute('src'); v.load(); }catch(e){}
+  caja.style.display='none';
+}
 async function medirVideoEditor(ruta){
   return new Promise(res=>{
     const v=document.createElement('video');
@@ -1492,7 +1548,7 @@ async function medirVideoEditor(ruta){
     v.onloadedmetadata=()=>{ clearTimeout(tm);
       fin(isFinite(v.duration)&&v.duration>0 ? Math.ceil(v.duration) : null); };
     v.onerror=()=>{ clearTimeout(tm); fin(null); };
-    try{ v.src=fuenteMedia(ruta,'video'); }catch(e){ clearTimeout(tm); fin(null); }
+    try{ v.src=mediaNuevos.has(normalizarNombre(ruta))?fuenteMedia(ruta,'video'):candidatosVideoEd(ruta)[0]; }catch(e){ clearTimeout(tm); fin(null); }
   });
 }
 async function autoDuracion(i){
@@ -1594,7 +1650,8 @@ function pintarPausas(){
       </div>
       <p class="nota" style="margin-top:8px">La duración se mide sola del archivo
         (el video se ve completo, sin cortes).
-        <button class="btn btn-fantasma btn-mini" onclick="autoDuracion(${i})">⟳ volver a medir</button></p>`;
+        <button class="btn btn-fantasma btn-mini" onclick="autoDuracion(${i})">⟳ volver a medir</button>
+        <button class="btn btn-fantasma btn-mini" onclick="probarVideo(${i})">▶ Probar</button></p>`;
     } else if(it.tipo==='clima'){
       cuerpo='<p class="nota" style="margin:4px 0 0">Pronóstico semanal de Montevideo (Open-Meteo). Se actualiza solo cada 30 min.</p>';
     } else {
