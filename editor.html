@@ -1492,7 +1492,7 @@ function medirYouTube(vid){
   return new Promise(res=>{
     let listo=false;
     const fin=x=>{ if(listo) return; listo=true; res(x); };
-    const tm=setTimeout(()=>fin(null), 12000);
+    const tm=setTimeout(()=>fin({error:-1}), 12000);
     function crear(){
       const div=document.createElement('div');
       div.style.cssText='position:fixed;left:-9999px;width:10px;height:10px';
@@ -1502,17 +1502,19 @@ function medirYouTube(vid){
           onReady:ev=>{ clearTimeout(tm);
             const d=Math.ceil(ev.target.getDuration()||0);
             try{ev.target.destroy();}catch(e){} div.remove();
-            fin(d>0?d:null); },
-          onError:()=>{ clearTimeout(tm); div.remove(); fin(null); }
+            fin(d>0?{seg:d}:{error:0}); },
+          onError:ev=>{ clearTimeout(tm); div.remove();
+            fin({error:(ev&&ev.data)||0}); }
         }});
-      }catch(e){ clearTimeout(tm); div.remove(); fin(null); }
+      }catch(e){ clearTimeout(tm); div.remove(); fin({error:-1}); }
     }
     if(window.YT && window.YT.Player) crear();
     else{
       window.onYouTubeIframeAPIReady=crear;
       const sc=document.createElement('script');
       sc.src='https://www.youtube.com/iframe_api';
-      sc.onerror=()=>fin(null);
+      sc.referrerPolicy='strict-origin-when-cross-origin';
+      sc.onerror=()=>fin({error:-1});
       document.head.appendChild(sc);
     }
   });
@@ -1536,6 +1538,17 @@ function candidatosVideoEd(ruta){
     'https://drive.google.com/uc?export=download&id='+id
   ];
 }
+function mensajeErrorYT(cod){
+  if(cod===101||cod===150)
+    return 'El dueño del contenido <b>bloquea la inserción fuera de YouTube</b>. '+
+      'Casi siempre es por <b>música con derechos</b>: en YouTube Studio quitá esa '+
+      'canción (o usá la Biblioteca de audio) y verificá "Permitir inserción" en '+
+      'la configuración avanzada del video.';
+  if(cod===100) return 'El video no existe o es <b>privado</b>: tiene que estar como <b>No listado</b> o Público.';
+  if(cod===2)   return 'El link no parece válido: copialo de nuevo desde YouTube.';
+  if(cod===-1)  return 'No pude cargar el reproductor de YouTube (¿la red bloquea youtube.com?).';
+  return 'YouTube no pudo reproducirlo acá (código '+cod+').';
+}
 function probarVideo(i){
   const it=config.pausas.items[i];
   if(!it||!it.src){ avisar('Primero indicá el video'); return; }
@@ -1558,15 +1571,14 @@ function probarVideo(i){
   const yid=idYouTube(it.src);
   if(yid){
     v.style.display='none';
-    let marco=$('ytPrueba');
-    if(!marco){ marco=document.createElement('iframe');
-      marco.id='ytPrueba';
-      marco.style.cssText='width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000';
-      marco.allow='autoplay; encrypted-media';
-      v.parentNode.insertBefore(marco, v); }
-    marco.style.display='block';
-    marco.src='https://www.youtube-nocookie.com/embed/'+yid+'?autoplay=1&mute=1&rel=0';
-    est.innerHTML='✓ <b>YouTube</b>: streaming con calidad adaptativa — ideal para videos pesados. Tocá ⟳ para que la duración se escriba sola.';
+    let contYT=$('ytPrueba');
+    if(!contYT){ contYT=document.createElement('div');
+      contYT.id='ytPrueba';
+      contYT.style.cssText='width:100%;aspect-ratio:16/9;border-radius:12px;background:#000;overflow:hidden';
+      v.parentNode.insertBefore(contYT, v); }
+    contYT.style.display='block'; contYT.innerHTML='<div></div>';
+    est.textContent='Cargando el reproductor de YouTube…';
+    cargarPruebaYT(contYT.firstChild, yid, est);
     return;
   }
   const marcoYT=$('ytPrueba'); if(marcoYT){marcoYT.removeAttribute('src');marcoYT.style.display='none';}
@@ -1583,11 +1595,35 @@ function probarVideo(i){
   v.onplaying=()=>{ est.textContent='✓ Reproduce bien (endpoint '+(k+1)+'). En pantalla va a andar.'; };
   v.src=urls[0]; const pr=v.play(); if(pr&&pr.catch) pr.catch(()=>{});
 }
+async function cargarPruebaYT(blanco, yid, est){
+  const listo = await new Promise(res=>{
+    if(window.YT&&window.YT.Player) return res(true);
+    const tm=setTimeout(()=>res(false),10000);
+    window.onYouTubeIframeAPIReady=()=>{clearTimeout(tm);res(true);};
+    const sc=document.createElement('script');
+    sc.src='https://www.youtube.com/iframe_api';
+    sc.referrerPolicy='strict-origin-when-cross-origin';
+    sc.onerror=()=>{clearTimeout(tm);res(false);};
+    document.head.appendChild(sc);
+  });
+  if(!listo){ est.innerHTML=mensajeErrorYT(-1); return; }
+  try{
+    window._pruebaYT=new YT.Player(blanco,{videoId:yid,
+      playerVars:{autoplay:1,mute:1,rel:0,playsinline:1},
+      events:{
+        onReady:ev=>{ try{ev.target.mute();ev.target.playVideo();}catch(e){}
+          est.innerHTML='✓ <b>Reproduce bien por streaming</b> — ideal para videos pesados. Tocá ⟳ para que la duración se escriba sola.'; },
+        onError:ev=>{ est.innerHTML='<b style="color:var(--coral)">No va a andar en pantalla:</b> '+
+          mensajeErrorYT((ev&&ev.data)||0); }
+      }});
+  }catch(e){ est.innerHTML=mensajeErrorYT(-1); }
+}
 function cerrarPrueba(){
   const caja=$('cajaProbarVideo'); if(!caja) return;
   const v=$('videoPrueba');
   try{ v.pause(); v.removeAttribute('src'); v.load(); }catch(e){}
-  const yt=$('ytPrueba'); if(yt) yt.removeAttribute('src');
+  try{ if(window._pruebaYT){window._pruebaYT.destroy();window._pruebaYT=null;} }catch(e){}
+  const yt=$('ytPrueba'); if(yt){ yt.innerHTML=''; yt.style.display='none'; }
   caja.style.display='none';
 }
 async function medirVideoEditor(ruta){
@@ -1609,7 +1645,16 @@ async function autoDuracion(i){
   if(!it || it.tipo!=='video' || !it.src){ avisar('Primero indicá el video'); return; }
   avisar('Midiendo el video…');
   const yid=idYouTube(it.src);
-  const d = yid ? await medirYouTube(yid) : await medirVideoEditor(it.src);
+  if(yid){
+    const r=await medirYouTube(yid);
+    if(r && r.seg){
+      it.duracion=r.seg+1;
+      pintarPausas(); guardarBorrador();
+      avisar('El video dura '+r.seg+' s → pausa de '+(r.seg+1)+' s');
+    } else avisar('YouTube no dejó medirlo: usá ▶ Probar para ver el motivo');
+    return;
+  }
+  const d=await medirVideoEditor(it.src);
   if(d){
     it.duracion=d+1;                       // +1 s de colita para el fundido
     pintarPausas(); guardarBorrador();
