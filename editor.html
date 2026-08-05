@@ -572,8 +572,10 @@ input[type=file]{display:none}
         <button class="btn btn-secundario" onclick="agregarPausa('video')">＋ Video</button>
         <button class="btn btn-secundario" onclick="agregarPausa('clima')">＋ Clima</button>
       </div>
-      <p class="nota" style="margin-top:12px">Los videos van <b>sin audio</b> (las TVs en
-      kiosco reproducen mudo). Formato recomendado: MP4 H.264, liviano.</p>
+      <p class="nota" style="margin-top:12px">Los videos van <b>sin audio</b> (las TVs
+      reproducen mudo). <b>¿Video pesado?</b> Subilo a YouTube como <b>No listado</b>
+      y pegá el link: se reproduce por streaming, sin límite de peso. Drive
+      conviene solo para videos livianos (&lt; 100 MB).</p>
     </div>
 
 
@@ -1481,6 +1483,40 @@ async function publicarEnDrive(){
     avisar('No se pudo publicar'+(e.message?': '+e.message:' (revisá URL y clave)'));
   }
 }
+function idYouTube(u){
+  const m=String(u||'').match(
+    /(?:youtube\.com\/(?:watch\?[^#\s]*v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+function medirYouTube(vid){
+  return new Promise(res=>{
+    let listo=false;
+    const fin=x=>{ if(listo) return; listo=true; res(x); };
+    const tm=setTimeout(()=>fin(null), 12000);
+    function crear(){
+      const div=document.createElement('div');
+      div.style.cssText='position:fixed;left:-9999px;width:10px;height:10px';
+      document.body.appendChild(div);
+      try{
+        new YT.Player(div,{videoId:vid, playerVars:{mute:1}, events:{
+          onReady:ev=>{ clearTimeout(tm);
+            const d=Math.ceil(ev.target.getDuration()||0);
+            try{ev.target.destroy();}catch(e){} div.remove();
+            fin(d>0?d:null); },
+          onError:()=>{ clearTimeout(tm); div.remove(); fin(null); }
+        }});
+      }catch(e){ clearTimeout(tm); div.remove(); fin(null); }
+    }
+    if(window.YT && window.YT.Player) crear();
+    else{
+      window.onYouTubeIframeAPIReady=crear;
+      const sc=document.createElement('script');
+      sc.src='https://www.youtube.com/iframe_api';
+      sc.onerror=()=>fin(null);
+      document.head.appendChild(sc);
+    }
+  });
+}
 function idDeMedia(ruta){
   ruta=String(ruta||'').trim();
   if(/drive\.google\.com|docs\.google\.com/.test(ruta)) return idDrive(ruta);
@@ -1519,6 +1555,22 @@ function probarVideo(i){
   }
   caja.style.display='grid';
   const v=$('videoPrueba'), est=$('estadoPrueba');
+  const yid=idYouTube(it.src);
+  if(yid){
+    v.style.display='none';
+    let marco=$('ytPrueba');
+    if(!marco){ marco=document.createElement('iframe');
+      marco.id='ytPrueba';
+      marco.style.cssText='width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#000';
+      marco.allow='autoplay; encrypted-media';
+      v.parentNode.insertBefore(marco, v); }
+    marco.style.display='block';
+    marco.src='https://www.youtube-nocookie.com/embed/'+yid+'?autoplay=1&mute=1&rel=0';
+    est.innerHTML='✓ <b>YouTube</b>: streaming con calidad adaptativa — ideal para videos pesados. Tocá ⟳ para que la duración se escriba sola.';
+    return;
+  }
+  const marcoYT=$('ytPrueba'); if(marcoYT){marcoYT.removeAttribute('src');marcoYT.style.display='none';}
+  v.style.display='block';
   const urls=candidatosVideoEd(it.src); let k=0;
   est.textContent='Probando endpoint 1 de '+urls.length+'…';
   const fallo=()=>{ k++;
@@ -1535,6 +1587,7 @@ function cerrarPrueba(){
   const caja=$('cajaProbarVideo'); if(!caja) return;
   const v=$('videoPrueba');
   try{ v.pause(); v.removeAttribute('src'); v.load(); }catch(e){}
+  const yt=$('ytPrueba'); if(yt) yt.removeAttribute('src');
   caja.style.display='none';
 }
 async function medirVideoEditor(ruta){
@@ -1555,7 +1608,8 @@ async function autoDuracion(i){
   const it=config.pausas.items[i];
   if(!it || it.tipo!=='video' || !it.src){ avisar('Primero indicá el video'); return; }
   avisar('Midiendo el video…');
-  const d=await medirVideoEditor(it.src);
+  const yid=idYouTube(it.src);
+  const d = yid ? await medirYouTube(yid) : await medirVideoEditor(it.src);
   if(d){
     it.duracion=d+1;                       // +1 s de colita para el fundido
     pintarPausas(); guardarBorrador();
@@ -1642,7 +1696,7 @@ function pintarPausas(){
       cuerpo=`
       <div class="fila dos" style="align-items:end">
         <div><label>Archivo de video</label>
-          <input value="${escapar(it.src||'')}" list="dlDrive" placeholder="promo.mp4 o link de Drive"
+          <input value="${escapar(it.src||'')}" list="dlDrive" placeholder="promo.mp4, link de Drive o de YouTube"
             oninput="tocarPausa(${i},'src',this.value)"
             onchange="autoDuracion(${i})"></div>
         <label class="btn btn-fantasma btn-archivo btn-mini">Subir video
