@@ -11,9 +11,9 @@
 <style>
 /* ============ PALETA HCA (misma del player, en clave clara) ============ */
 :root{
-  --azul-noche:#081a38;
-  --azul-hca:#12448f;
-  --azul-medio:#1c5cb8;
+  --azul-noche:#0b0f24;
+  --azul-hca:#242b59;
+  --azul-medio:#39468f;
   --celeste:#4fc3f7;
   --celeste-suave:#e3f4fd;
   --dorado:#ffc533;
@@ -25,15 +25,15 @@
   --tinta-suave:#5a6b85;
   --f-display:'Baloo 2',system-ui,sans-serif;
   --f-body:'Nunito Sans',system-ui,sans-serif;
-  --radio:14px;
-  --sombra:0 6px 24px rgba(8,26,56,.08);
+  --radio:16px;
+  --sombra:0 8px 28px rgba(11,15,36,.08);
 }
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:var(--f-body);background:var(--papel);color:var(--tinta);
   min-height:100vh}
 button{font-family:inherit;cursor:pointer}
 input,select,textarea{font-family:inherit;font-size:15px;color:var(--tinta);
-  background:var(--blanco);border:1.5px solid var(--borde);border-radius:10px;
+  background:var(--blanco);border:1.5px solid var(--borde);border-radius:12px;
   padding:9px 12px;width:100%}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--celeste);
   outline-offset:1px;border-color:var(--celeste)}
@@ -42,17 +42,32 @@ label{font-weight:700;font-size:13px;color:var(--tinta-suave);
   display:block;margin-bottom:5px;letter-spacing:.02em}
 
 /* ---------- Cabecera ---------- */
-header{background:var(--azul-noche);color:#fff;padding:14px 26px;
-  display:flex;align-items:center;justify-content:space-between;gap:16px;
-  position:sticky;top:0;z-index:20}
-header .titulo{font-family:var(--f-display);font-weight:800;font-size:22px}
+header{background:linear-gradient(120deg,#242b59,#0b0f24);color:#fff;
+  padding:12px 26px;display:flex;align-items:center;
+  justify-content:space-between;gap:16px;position:sticky;top:0;z-index:20;
+  box-shadow:0 6px 24px rgba(11,15,36,.25)}
+header .marca{display:flex;align-items:center;gap:14px;min-width:0}
+header .marca img{height:38px;width:auto;
+  filter:brightness(0) invert(1) drop-shadow(0 2px 8px rgba(0,0,0,.35))}
+header .titulo{font-family:var(--f-display);font-weight:800;font-size:21px;
+  line-height:1.05}
 header .titulo b{color:var(--dorado)}
+header .titulo small{display:block;font-family:var(--f-body);font-weight:600;
+  font-size:12px;color:rgba(246,249,255,.7);letter-spacing:.04em}
+.estado-base{font-size:12.5px;font-weight:700;padding:6px 13px;
+  border-radius:999px;background:rgba(255,255,255,.1);
+  border:1.5px solid rgba(255,255,255,.25);color:rgba(246,249,255,.85);
+  white-space:nowrap}
+.estado-base.ok{background:rgba(97,214,153,.16);
+  border-color:rgba(97,214,153,.65);color:#9af0c3}
+.estado-base.mal{background:rgba(255,93,93,.16);
+  border-color:rgba(255,93,93,.6);color:#ffb0b0}
 header .acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .aviso-borrador{font-size:13px;background:rgba(255,197,51,.18);
   border:1px solid rgba(255,197,51,.6);color:var(--dorado);
   padding:5px 12px;border-radius:999px;display:none}
 
-.btn{border:none;border-radius:10px;padding:10px 16px;font-weight:800;
+.btn{border:none;border-radius:12px;padding:10px 16px;font-weight:800;
   font-size:14px;transition:transform .12s, box-shadow .12s}
 .btn:hover{transform:translateY(-1px)}
 .btn:active{transform:translateY(0)}
@@ -65,14 +80,15 @@ header .acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .btn-mini{padding:6px 11px;font-size:13px}
 
 /* ---------- Pestañas ---------- */
-nav.pestanas{display:flex;gap:6px;padding:14px 26px 0;max-width:1280px;
-  margin:0 auto}
-nav.pestanas button{background:transparent;border:none;
-  font-family:var(--f-display);font-weight:700;font-size:16px;
-  color:var(--tinta-suave);padding:10px 18px;border-radius:12px 12px 0 0;
-  border-bottom:3px solid transparent}
-nav.pestanas button.activa{color:var(--azul-hca);
-  border-bottom-color:var(--dorado);background:var(--blanco)}
+nav.pestanas{display:flex;gap:8px;padding:16px 26px 4px;max-width:1280px;
+  margin:0 auto;flex-wrap:wrap}
+nav.pestanas button{background:var(--blanco);border:1.5px solid var(--borde);
+  font-family:var(--f-display);font-weight:700;font-size:15px;
+  color:var(--tinta-suave);padding:9px 20px;border-radius:999px;
+  transition:all .15s}
+nav.pestanas button:hover{border-color:var(--celeste);color:var(--azul-hca)}
+nav.pestanas button.activa{color:#fff;background:var(--azul-hca);
+  border-color:var(--azul-hca);box-shadow:0 4px 14px rgba(36,43,89,.28)}
 main{max-width:1280px;margin:0 auto;padding:20px 26px 60px}
 .pestana{display:none}
 .pestana.activa{display:block}
@@ -224,13 +240,18 @@ input[type=file]{display:none}
 <body>
 
 <header>
-  <div class="titulo">Editor · TRIVIA <b>HCA</b></div>
+  <div class="marca">
+    <img src="logo.png" alt="" onerror="this.style.display='none'">
+    <div class="titulo">Editor · TRIVIA <b>HCA</b>
+      <small>La base vive en Google Drive — publicá y las pantallas se actualizan solas</small>
+    </div>
+  </div>
   <div class="acciones">
+    <span class="estado-base" id="estadoBase">Base: sin conectar</span>
     <span class="aviso-borrador" id="avisoBorrador">Borrador local restaurado</span>
     <a class="btn btn-fantasma btn-mini" href="index.html" target="_blank"
        style="text-decoration:none;color:var(--celeste);border-color:var(--celeste)">Ver pantalla ↗</a>
     <button class="btn btn-primario" onclick="publicarEnDrive()">⬆ Publicar en Drive</button>
-    <button class="btn btn-fantasma" onclick="exportarZIP()">ZIP (respaldo)</button>
   </div>
 </header>
 
@@ -238,7 +259,7 @@ input[type=file]{display:none}
   <button class="activa" data-p="preguntas" onclick="irPestana('preguntas')">Preguntas</button>
   <button data-p="calendario" onclick="irPestana('calendario')">Calendario</button>
   <button data-p="pantalla" onclick="irPestana('pantalla')">Pantalla</button>
-  <button data-p="datos" onclick="irPestana('datos')">Importar / Exportar</button>
+  <button data-p="datos" onclick="irPestana('datos')">Respaldo</button>
 </nav>
 
 <main>
@@ -412,6 +433,21 @@ input[type=file]{display:none}
       </div>
       <p class="nota" style="margin-top:12px">Ejemplos: «SEMANA DE LA / MATEMÁTICA», «MES DEL /
       LIBRO / EN EL HCA». Si dejás un campo vacío, esa parte no se muestra.</p>
+
+      <div style="margin-top:20px;border-top:1px solid var(--borde);padding-top:16px">
+        <h3 style="margin-bottom:12px;font-size:16px">Ritmo del juego</h3>
+        <div class="fila dos">
+          <div><label>Segundos para responder</label>
+            <input type="number" id="tiempoPregunta" min="5" max="300"
+              oninput="tocarTiempos()"></div>
+          <div><label>Segundos mostrando la respuesta</label>
+            <input type="number" id="tiempoReveal" min="3" max="120"
+              oninput="tocarTiempos()"></div>
+        </div>
+        <p class="nota" style="margin-top:8px">Vale para todas las pantallas al
+        publicar. Una pantalla puntual puede pisarlo por URL
+        (<code>?tiempo=</code>, <code>?reveal=</code>).</p>
+      </div>
     </div>
 
     <div class="panel">
@@ -467,47 +503,43 @@ input[type=file]{display:none}
 
 <datalist id="dlDrive"></datalist>
 
-<!-- ==================== DATOS ==================== -->
+<!-- ==================== RESPALDO ==================== -->
 <section class="pestana" id="p-datos">
   <div class="tarjetas-datos">
 
     <div class="panel tarjeta-dato">
-      <h3>Importar</h3>
-      <p>Traé un banco de preguntas existente. El CSV tiene que respetar las
-      columnas del README.</p>
+      <h3>La base vive en Drive</h3>
+      <p>Preguntas, calendario, temática y pausas se leen y publican directo
+      en la hoja <b>trivia-db</b> de tu carpeta. Estos botones son los mismos
+      del resto del editor, juntos acá:</p>
+      <button class="btn btn-secundario" onclick="traerDelSitio()">⭯ Traer datos de la base</button>
+      <button class="btn btn-primario" onclick="publicarEnDrive()">⬆ Publicar en Drive</button>
+      <p class="nota">La conexión y la clave se configuran en la pestaña
+      <b>Pantalla</b>. Un borrador local se guarda solo mientras editás.</p>
+    </div>
+
+    <div class="panel tarjeta-dato">
+      <h3>Importar (migrar o restaurar)</h3>
+      <p>Para traer un banco viejo o volver de un respaldo.</p>
       <label class="btn btn-secundario btn-archivo">Importar CSV (reemplaza todo)
         <input type="file" id="impCSVReemplaza" accept=".csv,text/csv"></label>
       <label class="btn btn-fantasma btn-archivo">Importar CSV (agrega al final)
         <input type="file" id="impCSVAgrega" accept=".csv,text/csv"></label>
       <label class="btn btn-fantasma btn-archivo">Importar calendario.json
         <input type="file" id="impJSON" accept=".json,application/json"></label>
-      <label class="btn btn-fantasma btn-archivo">Importar config.json (temática y pausas)
+      <label class="btn btn-fantasma btn-archivo">Importar config.json
         <input type="file" id="impConfig" accept=".json,application/json"></label>
-      <button class="btn btn-fantasma" onclick="traerDelSitio()">Traer datos del sitio publicado</button>
     </div>
 
     <div class="panel tarjeta-dato">
-      <h3>Exportar</h3>
-      <p>Descargá los archivos y subilos al repositorio de GitHub. El paquete
-      Con la base en Drive, publicás directo con <b>⬆ Publicar</b>. El ZIP queda
-      como respaldo o para la instalación inicial del sitio.</p>
-      <button class="btn btn-primario" onclick="exportarZIP()">⬇ Paquete completo (ZIP)</button>
+      <h3>Respaldo e instalación</h3>
+      <p>Descargá una copia de todo, o el paquete para subir el sitio a
+      GitHub Pages la primera vez.</p>
+      <button class="btn btn-secundario" onclick="exportarZIP()">⬇ Paquete completo (ZIP)</button>
       <button class="btn btn-fantasma" onclick="exportarCSV()">Solo preguntas.csv</button>
       <button class="btn btn-fantasma" onclick="exportarJSON()">Solo calendario.json</button>
       <button class="btn btn-fantasma" onclick="exportarConfig()">Solo config.json</button>
       <p class="nota" id="resumenExport"></p>
-    </div>
-
-    <div class="panel tarjeta-dato">
-      <h3>Flujo con GitHub Pages</h3>
-      <div class="paso"><b>1</b><span>Editá preguntas y calendario acá.</span></div>
-      <div class="paso"><b>2</b><span>Exportá el <b>paquete ZIP</b> y descomprimilo
-        en la raíz del repositorio (pisa los archivos de datos y suma las
-        imágenes y videos nuevos — todo va junto, sin carpetas).</span></div>
-      <div class="paso"><b>3</b><span>Hacé commit y push. En un par de minutos la
-        pantalla toma los cambios sola (recarga los datos al reiniciar la página).</span></div>
-      <p class="nota">El borrador también queda guardado en este navegador por si
-      cerrás la pestaña antes de exportar.</p>
     </div>
 
   </div>
@@ -531,6 +563,7 @@ let config = {
   evento:{kicker:'MES DE LA', linea1:'CIENCIA', conector:'y la',
           linea2:'TECNOLOGÍA', pie:'EN EL HCA'},
   pausas:{cada:8, items:[{tipo:'splash', duracion:6}]},
+  tiempos:{pregunta:30, reveal:9},
   carpetaMedia:''
 };
 let mesVisto = new Date();
@@ -804,7 +837,7 @@ function quitarMedia(cual){
 }
 function actualizarNotaMedia(){
   $('notaMedia').textContent = mediaNuevos.size
-    ? mediaNuevos.size+' archivo(s) nuevo(s) se incluirán en el ZIP'
+    ? mediaNuevos.size+' archivo(s) pendiente(s): van en el ZIP de respaldo (no se subieron a Drive)'
     : '';
   pintarResumenExport();
 }
@@ -962,7 +995,8 @@ $('impConfig').addEventListener('change', async ev=>{
     if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
       items:Array.isArray(c.pausas.items)?c.pausas.items:[]};
     if(typeof c.carpetaMedia==='string') config.carpetaMedia=c.carpetaMedia;
-    pintarEvento(); pintarPausas(); pintarCarpeta(); guardarBorrador();
+    if(c.tiempos) config.tiempos={...config.tiempos,...c.tiempos};
+    pintarEvento(); pintarRitmo(); pintarPausas(); pintarCarpeta(); guardarBorrador();
     avisar('Config importada ✓');
   }catch(e){ avisar('Ese JSON no es válido'); }
 });
@@ -983,6 +1017,7 @@ async function traerDelSitio(){
       if(c.evento) config.evento={...config.evento,...c.evento};
       if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
         items:Array.isArray(c.pausas.items)?c.pausas.items:config.pausas.items};
+      if(c.tiempos) config.tiempos={...config.tiempos,...c.tiempos};
     }catch(e){} }
   }
   if(!deCarpeta){
@@ -1009,7 +1044,7 @@ async function traerDelSitio(){
     }
   }
   limpiarFormulario(); pintarLista(); pintarCalendario();
-  pintarEvento(); pintarPausas(); pintarCarpeta(); guardarBorrador();
+  pintarEvento(); pintarRitmo(); pintarPausas(); pintarCarpeta(); guardarBorrador();
   avisar((deCarpeta?'Datos de la carpeta de Drive':'Datos del sitio')+
     ' cargados: '+preguntas.length+' preguntas');
 }
@@ -1043,6 +1078,17 @@ function pintarResumenExport(){
 /* =====================================================================
    PANTALLA: temática del evento + pausas
    ===================================================================== */
+function tocarTiempos(){
+  config.tiempos={
+    pregunta:Math.min(300,Math.max(5,+$('tiempoPregunta').value||30)),
+    reveal:Math.min(120,Math.max(3,+$('tiempoReveal').value||9))
+  };
+  guardarBorrador();
+}
+function pintarRitmo(){
+  $('tiempoPregunta').value=config.tiempos?.pregunta??30;
+  $('tiempoReveal').value=config.tiempos?.reveal??9;
+}
 function pintarEvento(){
   const e=config.evento;
   ['Kicker','L1','Y','L2','Pie'].forEach(k=>{
@@ -1118,15 +1164,23 @@ async function probarCarpeta(avisando){
     if(textoCarpeta('calendario.json')!=null) partes.push('calendario ✓');
     if(textoCarpeta('config.json')!=null) partes.push('config ✓');
     est.innerHTML=partes.join(' · ');
+    const csvOk=textoCarpeta('preguntas.csv');
+    let nP=0; if(csvOk!=null){ try{nP=parseCSV(csvOk).length;}catch(err2){} }
+    ponerEstadoBase('Base ✓ '+(csvOk!=null? nP+' preguntas' : nombres.length+' archivos'),'ok');
     if(avisando) avisar('Carpeta conectada ✓');
     previsualizarMedia();
   }catch(e2){
     TEXTOS_CARPETA={};
     est.textContent='No pude leer la carpeta. Revisá que la URL sea la del Apps Script (/exec) y que el acceso sea "Cualquier persona".';
+    ponerEstadoBase('Base: sin conexión','mal');
     if(avisando) avisar('No pude conectar la carpeta');
   }
 }
 let TEXTOS_CARPETA={};
+function ponerEstadoBase(txt, clase){
+  const n=$('estadoBase'); if(!n) return;
+  n.textContent=txt; n.className='estado-base'+(clase?' '+clase:'');
+}
 function guardarClave(v){ try{localStorage.setItem('trivia-hca-clave',v.trim());}catch(e){} }
 function claveEdicion(){ try{return localStorage.getItem('trivia-hca-clave')||'';}catch(e){return '';} }
 function leerBase64(f){
@@ -1147,6 +1201,7 @@ async function publicarEnDrive(){
       clave, accion:'guardar', preguntas, calendario, config})});
     const j=await r.json();
     if(!j.ok) throw new Error(j.error||'');
+    ponerEstadoBase('Publicado ✓ '+new Date().toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'}),'ok');
     avisar('✓ Publicado — las pantallas lo toman en ≤5 minutos');
   }catch(e){
     avisar('No se pudo publicar'+(e.message?': '+e.message:' (revisá URL y clave)'));
@@ -1260,6 +1315,7 @@ function restaurarBorrador(){
       calendario=b.calendario||{default:{modo:'todas'},dias:{}};
       if(b.config){
         if(typeof b.config.carpetaMedia==='string') config.carpetaMedia=b.config.carpetaMedia;
+        if(b.config.tiempos) config.tiempos={...config.tiempos,...b.config.tiempos};
         config.evento={...config.evento,...(b.config.evento||{})};
         if(b.config.pausas) config.pausas={
           cada:Math.max(0,+b.config.pausas.cada||0),
@@ -1280,6 +1336,7 @@ restaurarBorrador();
 limpiarFormulario();
 pintarLista();
 pintarEvento();
+pintarRitmo();
 pintarPausas();
 pintarCarpeta();
 if(config.carpetaMedia) probarCarpeta(false);
