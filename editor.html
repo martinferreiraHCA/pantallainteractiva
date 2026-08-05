@@ -1294,16 +1294,19 @@ async function probarCarpeta(avisando){
   if(!url){ est.textContent='Sin carpeta configurada.'; TEXTOS_CARPETA={}; return; }
   est.textContent='Consultando la carpeta…';
   try{
+    const t0=Date.now();
     const r=await fetch(url,{cache:'no-store'});
     const m=await r.json();
+    const ms=Date.now()-t0;
     if(typeof m!=='object'||Array.isArray(m)) throw 0;
     MAPA_MEDIA = (m.archivos||m.textos) ? (m.archivos||{}) : m;
     TEXTOS_CARPETA = m.textos||{};
-    if(m.version && m.version<33)
+    if(m.version && m.version<35)
       avisar('Hay una versión nueva del script: actualizá apps-script.gs');
     const nombres=Object.keys(MAPA_MEDIA).sort();
     $('dlDrive').innerHTML=nombres.map(n=>`<option value="${escapar(n)}">`).join('');
-    const partes=['✓ Conectada: <b>'+nombres.length+'</b> archivo(s) de media'];
+    const partes=['✓ Conectada en '+(ms/1000).toFixed(1)+' s: <b>'+nombres.length+'</b> archivo(s) de media'];
+    if(ms>10000) partes.push('<b style="color:var(--coral)">⚠ la base responde lento: actualizá apps-script.gs (v3.5 usa caché de permisos)</b>');
     const csv=textoCarpeta('preguntas.csv');
     if(csv!=null){
       let n=0; try{n=parseCSV(csv).length;}catch(err){}
