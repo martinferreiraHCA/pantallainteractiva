@@ -461,6 +461,14 @@ canvas#confeti{position:fixed;inset:0;z-index:9;pointer-events:none}
 .pausa.visible{opacity:1}
 .pausa video{position:absolute;inset:0;width:100%;height:100%;
   object-fit:cover;display:none;background:var(--azul-noche)}
+.pausa iframe.yt{position:absolute;inset:0;width:100%;height:100%;
+  border:0;z-index:1;background:#000}
+.panel-media iframe.yt{width:100%;aspect-ratio:16/9;max-height:46vh;
+  border:3px solid rgba(var(--celeste-rgb),.5);border-radius:var(--radio);
+  display:block;margin:0 auto;background:#000;
+  box-shadow:0 18px 60px rgba(0,0,0,.45)}
+html[data-media="chica"] .panel-media iframe.yt{max-height:32vh}
+html[data-media="grande"] .panel-media iframe.yt{max-height:62vh}
 .pausa.con-video video{display:block}
 .plaqueta{display:none;width:min(1560px,92vw);grid-template-columns:1.1fr 1fr;
   gap:3.4vw;align-items:center;position:relative;z-index:1}
@@ -727,6 +735,11 @@ function idDeMedia(ruta){
 /* Videos de Drive: uc?export=download mete una página intersticial en
    archivos grandes. drive.usercontent con confirm=t la saltea. Se prueba
    en cadena, con timeout por si queda cargando sin error. */
+function idYouTube(u){
+  const m=String(u||'').match(
+    /(?:youtube\.com\/(?:watch\?[^#\s]*v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
 function candidatosVideo(ruta){
   const id=idDeMedia(ruta);
   if(!id) return [ruta];
@@ -1096,7 +1109,8 @@ function medirVideo(src){
 }
 async function completarDuracionesVideo(){
   const items=(CAMPANIA.pausas.items||[])
-    .filter(it=>it && it.tipo==='video' && it.src && !(+it.duracion>0));
+    .filter(it=>it && it.tipo==='video' && it.src && !idYouTube(it.src)
+             && !(+it.duracion>0));
   if(!items.length) return false;
   let cambio=false;
   await Promise.all(items.map(async it=>{
@@ -1276,10 +1290,21 @@ function pintarPregunta(p,n){
   const pm=$('panelMedia'); pm.innerHTML='';
   let hayMedia=false;
   if (p.video){
-    const v=document.createElement('video');
-    v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true;
-    pm.appendChild(v); hayMedia=true;
-    cargarVideo(v, p.video, ()=>{pm.innerHTML='';escena.classList.remove('con-media');});
+    const ytP=idYouTube(p.video);
+    if (ytP){
+      const marco=document.createElement('iframe');
+      marco.className='yt';
+      marco.allow='autoplay; encrypted-media';
+      marco.src='https://www.youtube-nocookie.com/embed/'+ytP+
+        '?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&iv_load_policy=3'+
+        '&modestbranding=1&loop=1&playlist='+ytP;
+      pm.appendChild(marco); hayMedia=true;
+    } else {
+      const v=document.createElement('video');
+      v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true;
+      pm.appendChild(v); hayMedia=true;
+      cargarVideo(v, p.video, ()=>{pm.innerHTML='';escena.classList.remove('con-media');});
+    }
   } else if (p.imagen){
     const im=document.createElement('img');
     im.alt='';
@@ -1388,7 +1413,17 @@ async function mostrarPausa(it, seg, off){
   P.classList.remove('con-video','con-plaqueta');
   let usaSplash = !it || (it.tipo!=='video' && it.tipo!=='plaqueta');
 
-  if (it && it.tipo==='video' && it.src){
+  const ytId = it && it.tipo==='video' ? idYouTube(it.src) : null;
+  if (ytId){
+    const marco=document.createElement('iframe');
+    marco.className='yt';
+    marco.allow='autoplay; encrypted-media';
+    marco.src='https://www.youtube-nocookie.com/embed/'+ytId+
+      '?autoplay=1&mute=1&controls=0&playsinline=1&rel=0&iv_load_policy=3'+
+      '&modestbranding=1&disablekb=1&fs=0&start='+Math.max(0,Math.floor(off));
+    P.appendChild(marco);
+    P.classList.add('con-video');
+  } else if (it && it.tipo==='video' && it.src){
     video.loop=false;                       // se ve completo, una sola vez
     video.onended=null;                     // al terminar queda el último cuadro
     video.onloadedmetadata=()=>{            // en vivo: arrancar donde va la emisión
@@ -1457,6 +1492,7 @@ async function mostrarPausa(it, seg, off){
                      'ent-sube','ent-zoom','ent-lateral');
   video.onerror=null; video.onplaying=null; video.onloadedmetadata=null;
   try{ video.pause(); video.removeAttribute('src'); video.load(); }catch(e){}
+  P.querySelectorAll('iframe.yt').forEach(f=>f.remove());
 }
 
 /* ---------------- Ciclos ---------------- */
