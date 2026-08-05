@@ -79,6 +79,16 @@ header .acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   border:1.5px solid var(--coral)}
 .btn-mini{padding:6px 11px;font-size:13px}
 
+.selector-color{display:flex;gap:7px;margin-top:8px}
+.selector-color b{width:24px;height:24px;border-radius:50%;cursor:pointer;
+  border:2.5px solid transparent;transition:transform .12s}
+.selector-color b:hover{transform:scale(1.12)}
+.selector-color b.activo{border-color:var(--tinta);transform:scale(1.12)}
+.fila-emojis{display:flex;gap:4px;flex-wrap:wrap}
+.fila-emojis b{font-size:21px;cursor:pointer;padding:4px 6px;border-radius:8px;
+  font-weight:400;transition:transform .12s}
+.fila-emojis b:hover{transform:scale(1.25);background:var(--celeste-suave)}
+
 /* ---------- Pestañas ---------- */
 nav.pestanas{display:flex;gap:8px;padding:16px 26px 4px;max-width:1280px;
   margin:0 auto;flex-wrap:wrap}
@@ -399,40 +409,64 @@ input[type=file]{display:none}
 <section class="pestana" id="p-pantalla">
   <div class="dos-columnas">
 
-    <div class="panel">
-      <h3 style="margin-bottom:14px">Temática del evento</h3>
-      <p class="nota" style="margin-bottom:16px">Es el título grande que aparece en la
-      portada y en los interludios. Cambialo cuando arranque otro mes o actividad.</p>
-      <div class="fila dos">
+    <div class="panel" style="padding:20px">
+      <h3 style="margin-bottom:4px">Portada del evento</h3>
+      <p class="nota" style="margin-bottom:14px">Lo que se ve al arrancar y en los
+      interludios. Elegí una plantilla o armala a tu gusto — la vista previa es en vivo.</p>
+
+      <!-- Vista previa fiel -->
+      <div id="previaEvento" style="border-radius:16px;padding:34px 20px 26px;
+        text-align:center;background:radial-gradient(circle at 50% 30%,#1c2354,#0b0f24);
+        display:grid;gap:12px;justify-items:center;position:relative;overflow:hidden">
+        <div id="pvEmoji" style="font-size:38px;line-height:1;display:none"></div>
+        <div id="pvKicker" style="color:#4fc3f7;font-family:'Baloo 2';font-weight:700;
+          letter-spacing:.4em;font-size:13px;display:flex;align-items:center;gap:10px">
+          <i style="display:block;width:34px;height:2px;background:linear-gradient(90deg,transparent,#4fc3f7)"></i>
+          <span id="pvKickerTxt"></span>
+          <i style="display:block;width:34px;height:2px;background:linear-gradient(90deg,#4fc3f7,transparent)"></i>
+        </div>
+        <div style="font-family:'Baloo 2';font-weight:800;font-size:clamp(26px,4.6vw,44px);
+          line-height:1.08;color:#f6f9ff">
+          <b id="pvL1" style="font-weight:800"></b>
+          <span id="pvY" style="font-size:.45em;font-weight:700;opacity:.85;margin:0 6px;color:#f6f9ff"></span>
+          <b id="pvL2" style="font-weight:800"></b>
+        </div>
+        <div id="pvPie" style="color:#f6f9ff;font-family:'Baloo 2';font-weight:800;
+          font-size:12px;letter-spacing:.25em;border:1.5px solid rgba(255,197,51,.6);
+          border-radius:999px;padding:6px 18px"></div>
+        <div style="color:rgba(246,249,255,.55);font-family:'Baloo 2';font-weight:700;
+          font-size:10.5px;letter-spacing:.26em">PENSAR • SENTIR • ACTUAR</div>
+      </div>
+
+      <!-- Plantillas de un toque -->
+      <label style="margin:16px 0 8px">Plantillas rápidas</label>
+      <div id="plantillas" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+
+      <!-- Campos -->
+      <div class="fila dos" style="margin-top:16px">
         <div><label>Línea chica de arriba</label>
           <input id="evKicker" placeholder="MES DE LA" oninput="tocarEvento()"></div>
         <div><label>Cierre (cápsula)</label>
           <input id="evPie" placeholder="EN EL HCA" oninput="tocarEvento()"></div>
       </div>
-      <div class="fila tres" style="grid-template-columns:1.2fr .6fr 1.2fr">
-        <div><label>Palabra 1 (dorado)</label>
-          <input id="evL1" placeholder="CIENCIA" oninput="tocarEvento()"></div>
+      <div class="fila tres" style="grid-template-columns:1.2fr .6fr 1.2fr;margin-top:14px">
+        <div><label>Palabra 1</label>
+          <input id="evL1" placeholder="CIENCIA" oninput="tocarEvento()">
+          <div class="selector-color" data-campo="color1"></div></div>
         <div><label>Conector</label>
           <input id="evY" placeholder="y la" oninput="tocarEvento()"></div>
-        <div><label>Palabra 2 (celeste)</label>
-          <input id="evL2" placeholder="TECNOLOGÍA" oninput="tocarEvento()"></div>
+        <div><label>Palabra 2</label>
+          <input id="evL2" placeholder="TECNOLOGÍA" oninput="tocarEvento()">
+          <div class="selector-color" data-campo="color2"></div></div>
       </div>
-      <div id="previaEvento" style="margin-top:18px;border-radius:16px;padding:26px 18px;
-        text-align:center;background:radial-gradient(circle at 50% 30%,#1c2354,#0b0f24);
-        display:grid;gap:10px;justify-items:center">
-        <div id="pvKicker" style="color:#4fc3f7;font-family:'Baloo 2';font-weight:700;
-          letter-spacing:.4em;font-size:13px"></div>
-        <div style="font-family:'Baloo 2';font-weight:800;font-size:34px;line-height:1.1">
-          <b id="pvL1" style="color:#ffc533"></b>
-          <span id="pvY" style="color:#f6f9ff;font-size:16px;font-weight:700;margin:0 4px"></span>
-          <b id="pvL2" style="color:#4fc3f7"></b>
+      <div style="margin-top:14px">
+        <label>Emoji de la portada (opcional)</label>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input id="evEmoji" style="width:90px;text-align:center;font-size:20px"
+            maxlength="4" oninput="tocarEvento()">
+          <span class="fila-emojis" id="filaEmojis"></span>
         </div>
-        <div id="pvPie" style="color:#f6f9ff;font-family:'Baloo 2';font-weight:800;
-          font-size:12px;letter-spacing:.25em;border:1.5px solid rgba(255,197,51,.6);
-          border-radius:999px;padding:6px 16px"></div>
       </div>
-      <p class="nota" style="margin-top:12px">Ejemplos: «SEMANA DE LA / MATEMÁTICA», «MES DEL /
-      LIBRO / EN EL HCA». Si dejás un campo vacío, esa parte no se muestra.</p>
 
       <div style="margin-top:20px;border-top:1px solid var(--borde);padding-top:16px">
         <h3 style="margin-bottom:12px;font-size:16px">Ritmo del juego</h3>
@@ -561,7 +595,8 @@ let correctaElegida = 'A';
 const mediaNuevos = new Map();      // nombreRelativo -> File
 let config = {
   evento:{kicker:'MES DE LA', linea1:'CIENCIA', conector:'y la',
-          linea2:'TECNOLOGÍA', pie:'EN EL HCA'},
+          linea2:'TECNOLOGÍA', pie:'EN EL HCA',
+          color1:'dorado', color2:'celeste', emoji:''},
   pausas:{cada:8, items:[{tipo:'splash', duracion:6}]},
   tiempos:{pregunta:30, reveal:9},
   carpetaMedia:''
@@ -1089,27 +1124,83 @@ function pintarRitmo(){
   $('tiempoPregunta').value=config.tiempos?.pregunta??30;
   $('tiempoReveal').value=config.tiempos?.reveal??9;
 }
+
+/* ---------- Diseñador de portada ---------- */
+const COLORES_PORTADA={
+  dorado :['#ffc533','#fff3cf'], celeste:['#4fc3f7','#d8f3ff'],
+  coral  :['#ff5d5d','#ffd6d6'], blanco :['#f6f9ff','#ffffff']
+};
+const PLANTILLAS=[
+ {n:'🔬 Ciencia y Tecnología', v:{kicker:'MES DE LA',linea1:'CIENCIA',conector:'y la',
+   linea2:'TECNOLOGÍA',pie:'EN EL HCA',color1:'dorado',color2:'celeste',emoji:'🔬'}},
+ {n:'📐 Matemática', v:{kicker:'SEMANA DE LA',linea1:'MATEMÁTICA',conector:'',
+   linea2:'',pie:'EN EL HCA',color1:'celeste',color2:'celeste',emoji:'📐'}},
+ {n:'⚗️ Feria de Ciencias', v:{kicker:'LLEGA LA',linea1:'FERIA',conector:'de',
+   linea2:'CIENCIAS',pie:'EN EL HCA',color1:'dorado',color2:'dorado',emoji:'⚗️'}},
+ {n:'📚 Mes del Libro', v:{kicker:'MES DEL',linea1:'LIBRO',conector:'',
+   linea2:'',pie:'EN EL HCA',color1:'coral',color2:'coral',emoji:'📚'}},
+ {n:'🎉 Aniversario', v:{kicker:'ANIVERSARIO DEL',linea1:'HCA',conector:'',
+   linea2:'',pie:'PENSAR SENTIR ACTUAR',color1:'dorado',color2:'dorado',emoji:'🎉'}}
+];
+const EMOJIS_SUGERIDOS=['🔬','⚗️','🧪','🚀','📐','📚','🎭','⚽','🎨','🎶','🌎','💡'];
+
 function pintarEvento(){
   const e=config.evento;
-  ['Kicker','L1','Y','L2','Pie'].forEach(k=>{
-    const campo={'Kicker':'kicker','L1':'linea1','Y':'conector','L2':'linea2','Pie':'pie'}[k];
-    $('ev'+k).value=e[campo]||'';
-  });
-  previaEvento();
+  $('evKicker').value=e.kicker||''; $('evL1').value=e.linea1||'';
+  $('evY').value=e.conector||'';    $('evL2').value=e.linea2||'';
+  $('evPie').value=e.pie||'';       $('evEmoji').value=e.emoji||'';
+  pintarSwatches(); previaEvento();
 }
 function tocarEvento(){
-  config.evento={
+  config.evento={...config.evento,
     kicker:$('evKicker').value.trim(), linea1:$('evL1').value.trim(),
     conector:$('evY').value.trim(),    linea2:$('evL2').value.trim(),
-    pie:$('evPie').value.trim()
+    pie:$('evPie').value.trim(),       emoji:$('evEmoji').value.trim()
   };
   previaEvento(); guardarBorrador();
+}
+function elegirColor(campo,color){
+  config.evento[campo]=color;
+  pintarSwatches(); previaEvento(); guardarBorrador();
+}
+function pintarSwatches(){
+  document.querySelectorAll('.selector-color').forEach(cont=>{
+    const campo=cont.dataset.campo;
+    const actual=config.evento[campo]||(campo==='color1'?'dorado':'celeste');
+    cont.innerHTML=Object.keys(COLORES_PORTADA).map(c=>
+      `<b title="${c}" class="${c===actual?'activo':''}"
+         style="background:linear-gradient(135deg,${COLORES_PORTADA[c][0]},${COLORES_PORTADA[c][1]})"
+         onclick="elegirColor('${campo}','${c}')"></b>`).join('');
+  });
+}
+function pintarPlantillas(){
+  $('plantillas').innerHTML=PLANTILLAS.map((p,i)=>
+    `<button class="btn btn-fantasma btn-mini" onclick="usarPlantilla(${i})">${p.n}</button>`).join('');
+  $('filaEmojis').innerHTML=EMOJIS_SUGERIDOS.map(x=>
+    `<b onclick="$('evEmoji').value='${x}';tocarEvento()">${x}</b>`).join('');
+}
+function usarPlantilla(i){
+  config.evento={...config.evento, ...PLANTILLAS[i].v};
+  pintarEvento(); guardarBorrador();
+  avisar('Plantilla aplicada — tocá ⬆ Publicar cuando esté lista');
+}
+function pintarPalabraPrev(nodo,color,porDefecto){
+  const c=COLORES_PORTADA[color]||COLORES_PORTADA[porDefecto];
+  nodo.style.backgroundImage=`linear-gradient(90deg,${c[0]} 28%,${c[1]} 50%,${c[0]} 72%)`;
+  nodo.style.webkitBackgroundClip='text';
+  nodo.style.backgroundClip='text';
+  nodo.style.color='transparent';
 }
 function previaEvento(){
   const e=config.evento;
   const set=(id,v)=>{const n=$(id);n.textContent=v||'';n.style.display=v?'':'none';};
-  set('pvKicker',e.kicker); set('pvL1',e.linea1);
-  set('pvY',e.conector);    set('pvL2',e.linea2); set('pvPie',e.pie);
+  set('pvEmoji',e.emoji);
+  set('pvKickerTxt',e.kicker);
+  $('pvKicker').style.display=e.kicker?'flex':'none';
+  set('pvL1',e.linea1); set('pvY',e.conector); set('pvL2',e.linea2);
+  pintarPalabraPrev($('pvL1'),e.color1,'dorado');
+  pintarPalabraPrev($('pvL2'),e.color2,'celeste');
+  set('pvPie',e.pie);
 }
 function agregarPausa(tipo){
   const base={tipo, duracion: tipo==='video'?20:(tipo==='plaqueta'?10:6)};
@@ -1162,7 +1253,16 @@ async function probarCarpeta(avisando){
       partes.push('<b>preguntas</b> en la carpeta ('+n+') — las pantallas leen de acá');
     } else partes.push('sin archivo de preguntas (usarán el del repo)');
     if(textoCarpeta('calendario.json')!=null) partes.push('calendario ✓');
-    if(textoCarpeta('config.json')!=null) partes.push('config ✓');
+    const cfgBase=textoCarpeta('config.json');
+    if(cfgBase!=null){
+      partes.push('config ✓');
+      try{
+        const c=JSON.parse(cfgBase);
+        if(!c.tiempos)
+          partes.push('<b style="color:var(--coral)">⚠ el script de Drive es viejo: '+
+            'copiá apps-script.gs de nuevo y creá una NUEVA VERSIÓN de la implementación</b>');
+      }catch(err3){}
+    }
     est.innerHTML=partes.join(' · ');
     const csvOk=textoCarpeta('preguntas.csv');
     let nP=0; if(csvOk!=null){ try{nP=parseCSV(csvOk).length;}catch(err2){} }
@@ -1335,6 +1435,7 @@ conectarArchivo('archivoVideo','fVideo','video');
 restaurarBorrador();
 limpiarFormulario();
 pintarLista();
+pintarPlantillas();
 pintarEvento();
 pintarRitmo();
 pintarPausas();
