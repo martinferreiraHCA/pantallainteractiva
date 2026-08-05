@@ -140,6 +140,46 @@ html[data-media="grande"] .panel-media video{max-height:62vh}
 .progreso i{display:block;height:100%;width:0;
   background:linear-gradient(90deg,var(--azul-medio),var(--celeste) 62%,var(--dorado));
   transition:width .6s ease}
+.clima-hoy{display:flex;align-items:center;gap:.8vw;
+  font-family:var(--f-display);font-weight:700;color:var(--tinta-suave);
+  background:rgba(255,255,255,.07);border:2px solid rgba(255,255,255,.16);
+  border-radius:999px;padding:.7vh 1.4vw}
+html[data-forma="cuadrado"] .clima-hoy{border-radius:10px}
+.clima-hoy .ic{font-size:2.8vh;line-height:1}
+.clima-hoy b{font-size:2.6vh;color:var(--crema)}
+.clima-hoy small{font-size:1.7vh;opacity:.8}
+
+/* Pantalla de clima semanal (pausa tipo "clima") */
+.tablero-clima{display:none;position:relative;z-index:1;width:min(1650px,94vw);
+  text-align:center}
+.pausa.con-clima .tablero-clima{display:block}
+.tablero-clima .tc-kicker{display:inline-block;font-family:var(--f-display);
+  font-weight:800;font-size:clamp(18px,3vh,38px);letter-spacing:.22em;
+  background:linear-gradient(90deg,var(--celeste) 28%,#eaf7ff 50%,var(--celeste) 72%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;
+  color:transparent;animation:destello 3.2s linear infinite}
+.tablero-clima .tc-titulo{font-family:var(--f-display);font-weight:800;
+  font-size:clamp(30px,7vh,96px);margin:.6vh 0 3.4vh;
+  text-shadow:0 6px 30px rgba(0,0,0,.45)}
+.tc-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:1.1vw}
+.tc-dia{background:linear-gradient(165deg,rgba(255,255,255,.1),rgba(255,255,255,.04));
+  border:2.5px solid rgba(255,255,255,.18);border-radius:var(--radio);
+  padding:2.6vh 1vh;display:grid;gap:1.2vh;justify-items:center}
+.tc-dia.hoy{border-color:rgba(var(--dorado-rgb),.75);
+  background:linear-gradient(165deg,rgba(var(--dorado-rgb),.16),rgba(255,255,255,.05))}
+.tc-dia .nombre{font-family:var(--f-display);font-weight:800;
+  font-size:clamp(13px,2.3vh,26px);letter-spacing:.1em;color:var(--celeste)}
+.tc-dia.hoy .nombre{color:var(--dorado)}
+.tc-dia .icono{font-size:clamp(26px,6.4vh,72px);line-height:1;
+  filter:drop-shadow(0 6px 18px rgba(0,0,0,.35))}
+.tc-dia .maxima{font-family:var(--f-display);font-weight:800;
+  font-size:clamp(18px,3.6vh,42px)}
+.tc-dia .minima{font-size:clamp(13px,2.2vh,26px);color:var(--tinta-suave)}
+.tc-dia .lluvia{font-size:clamp(12px,2vh,22px);color:var(--celeste)}
+.pausa.visible .tc-dia{animation:aparecerDato .5s both}
+@media (max-aspect-ratio:1/1){ .tc-dias{grid-template-columns:repeat(2,1fr)}
+  .tc-dia:last-child{grid-column:1/-1} }
+
 .pie-lema{font-family:var(--f-display);font-weight:700;font-size:2.1vh;
   letter-spacing:.26em;color:var(--tinta-suave)}
 .badge-demo{position:fixed;top:2vh;left:50%;transform:translateX(-50%);
@@ -516,7 +556,10 @@ canvas#confeti{position:fixed;inset:0;z-index:9;pointer-events:none}
     <div class="nombre">TRIVIA <b>HCA</b></div>
   </div>
   <div class="chip-categoria" id="chipCategoria"></div>
+  <div style="display:flex;align-items:center;gap:1.6vw">
+  <div class="clima-hoy" id="climaHoy" style="display:none"></div>
   <div class="reloj"><span id="hora">--:--</span><small id="fecha"></small></div>
+</div>
 </header>
 
 <main class="escenario">
@@ -555,6 +598,7 @@ canvas#confeti{position:fixed;inset:0;z-index:9;pointer-events:none}
 
 <div class="pausa" id="pausa">
   <video id="pausaVideo" muted playsinline preload="auto"></video>
+  <div class="tablero-clima" id="tableroClima"></div>
   <div class="plaqueta" id="plaqueta">
     <div class="plaqueta-tarjeta">
       <div class="plaqueta-kicker" id="plaKicker"></div>
@@ -765,13 +809,26 @@ let banco=[], calendario={default:{modo:'todas'},dias:{}};
 let pool=[], fechaPoolISO='';
 let modoDemo=false, debeRecargar=false, firmaDatos='';
 let MAPA_MEDIA={};   // nombre de archivo → id de Drive (carpeta de media)
+/* Hora de servidor: el Apps Script devuelve su Date.now() (reloj de Google).
+   desfase = qué sumarle al reloj local para obtener la hora real.
+   Montevideo es UTC-3 fijo (sin horario de verano), así que toda la línea
+   de tiempo se calcula desde epoch UTC sin depender del TZ del dispositivo. */
+const RELOJ={desfase:0, fuente:'local'};
+const UTC_MVD = -3*3600*1000;
+function ahoraMs(){ return Date.now()+RELOJ.desfase; }
+function fechaMvd(){ return new Date(ahoraMs()+UTC_MVD); }  // leer con getUTC*
+
+/* URL del Apps Script de la base (Drive). Integrada para que las pantallas
+   arranquen solas incluso sin config.json. Si algún día creás una
+   implementación NUEVA (URL distinta), actualizá esta línea o el config.json. */
+const URL_BASE_DRIVE='https://script.google.com/macros/s/AKfycbxJr4ONAfe4En0vAxGcAB8Mm9U6mYKPvk76Vwc0sB9C09feshnnHyi6uswxbMMpAc2X/exec';
 
 /* Temática del splash + pausas (video/plaqueta). Se pisa con config.json */
 let CAMPANIA = {
   evento:{kicker:'MES DE LA', linea1:'CIENCIA', conector:'y la',
           linea2:'TECNOLOGÍA', pie:'EN EL HCA'},
   pausas:{cada:8, porTanda:1, items:[{tipo:'splash', duracion:6}]},
-  carpetaMedia:''   // URL del Apps Script que lista la carpeta de Drive
+  carpetaMedia:URL_BASE_DRIVE   // base en Drive (integrada; config.json puede pisarla)
 };
 
 const $=id=>document.getElementById(id);
@@ -818,6 +875,7 @@ function aplicarConfig(c, esRepo){
     if(pa.forma) h.dataset.forma=pa.forma;
     if(pa.animaciones) h.dataset.anim=pa.animaciones;
     if(pa.mediaTam) h.dataset.media=pa.mediaTam;
+    if(pa.clima) CAMPANIA.pantallaClima=pa.clima;
   }
   if(c.tiempos){
     if(!urlTrae.tiempo && +c.tiempos.pregunta>=5)
@@ -825,7 +883,7 @@ function aplicarConfig(c, esRepo){
     if(!urlTrae.reveal && +c.tiempos.reveal>=3)
       CONFIG.segundosReveal=Math.min(120,+c.tiempos.reveal);
   }
-  if(esRepo && typeof c.carpetaMedia==='string')
+  if(esRepo && typeof c.carpetaMedia==='string' && c.carpetaMedia.trim())
     CAMPANIA.carpetaMedia=c.carpetaMedia.trim();
 }
 
@@ -839,8 +897,16 @@ async function leerFuentes(){
   const url=(F.cfgRepo && typeof F.cfgRepo.carpetaMedia==='string'
               ? F.cfgRepo.carpetaMedia.trim() : '') || CAMPANIA.carpetaMedia;
   if(url){
-    try{ const t=await traerTexto(url, 12000);
-         F.carpeta=JSON.parse(t); F.crudo+=t; }catch(e){}
+    try{
+      const t0=Date.now();
+      const t=await traerTexto(url, 12000);
+      const t1=Date.now();
+      F.carpeta=JSON.parse(t); F.crudo+=t;
+      if(F.carpeta && F.carpeta.ahora){
+        RELOJ.desfase = F.carpeta.ahora - Math.round((t0+t1)/2);
+        RELOJ.fuente = 'servidor';
+      }
+    }catch(e){}
   }
   const textos = (F.carpeta && F.carpeta.textos) || {};
   const hayPregDrive = !urlTrae.csv && textoDe(textos,'preguntas.csv')!=null;
@@ -894,6 +960,7 @@ function vigilarCambios(){
     try{
       const F=await leerFuentes();
       if(F.crudo && firmaDe(F.crudo)!==firmaDatos) debeRecargar=true;
+      cargarClima();
     }catch(e){}
   }, 5*60*1000);
 }
@@ -929,8 +996,8 @@ function aplicarEvento(){
 
 /* ---------------- Pool según calendario ---------------- */
 function hoyISO(){
-  const d=new Date();
-  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const d=fechaMvd();
+  return d.getUTCFullYear()+'-'+String(d.getUTCMonth()+1).padStart(2,'0')+'-'+String(d.getUTCDate()).padStart(2,'0');
 }
 function mezclarArr(a, rnd){
   rnd = rnd || Math.random;
@@ -993,8 +1060,9 @@ function construirCiclo(){
   CICLO=ciclo;
 }
 function segundosDeHoy(){
-  const d=new Date();
-  return d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds() + d.getMilliseconds()/1000;
+  const d=fechaMvd();
+  return d.getUTCHours()*3600 + d.getUTCMinutes()*60 + d.getUTCSeconds()
+       + d.getUTCMilliseconds()/1000;
 }
 function localizar(){
   const total=CICLO.reduce((a,b)=>a+b.dur,0) || 1;
@@ -1006,13 +1074,60 @@ function localizar(){
   return {i:0, off:0};
 }
 
-/* ---------------- Reloj de la barra ---------------- */
+/* ---------------- Reloj de la barra (hora del servidor, TZ Montevideo) --- */
+const DIAS_ES=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const MESES_ES=['enero','febrero','marzo','abril','mayo','junio','julio',
+  'agosto','setiembre','octubre','noviembre','diciembre'];
 function tictac(){
-  const d=new Date();
-  $('hora').textContent = d.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'});
-  $('fecha').textContent = d.toLocaleDateString('es-UY',{weekday:'long',day:'numeric',month:'long'});
+  const d=fechaMvd();
+  $('hora').textContent = String(d.getUTCHours()).padStart(2,'0')+':'+
+                          String(d.getUTCMinutes()).padStart(2,'0');
+  $('fecha').textContent = DIAS_ES[d.getUTCDay()]+' '+d.getUTCDate()+' de '+
+                           MESES_ES[d.getUTCMonth()];
+  pintarClimaBarra();
 }
 setInterval(tictac,1000); tictac();
+
+/* ---------------- Clima (Open-Meteo, Montevideo, sin API key) ---------- */
+const CLIMA={datos:null, pedidoEn:0};
+const URL_CLIMA='https://api.open-meteo.com/v1/forecast?latitude=-34.9&longitude=-56.19'
+  +'&daily=weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max'
+  +'&current_weather=true&timezone=America%2FMontevideo&forecast_days=7';
+function emojiClima(codigo){
+  if(codigo===0) return '☀️';
+  if(codigo<=2) return '🌤️';
+  if(codigo===3) return '☁️';
+  if(codigo<=48) return '🌫️';
+  if(codigo<=57) return '🌦️';
+  if(codigo<=67) return '🌧️';
+  if(codigo<=77) return '🌨️';
+  if(codigo<=82) return '🌧️';
+  if(codigo<=86) return '🌨️';
+  return '⛈️';
+}
+async function cargarClima(){
+  if(CLIMA.datos && ahoraMs()-CLIMA.pedidoEn < 30*60*1000) return;
+  try{
+    const r=await fetch(URL_CLIMA,{cache:'no-store'});
+    if(!r.ok) throw 0;
+    CLIMA.datos=await r.json();
+    CLIMA.pedidoEn=ahoraMs();
+    pintarClimaBarra();
+  }catch(e){}
+}
+function pintarClimaBarra(){
+  const n=$('climaHoy'); if(!n) return;
+  const apagado = CAMPANIA.pantallaClima==='no';
+  const c=CLIMA.datos;
+  if(apagado || !c || !c.daily){ n.style.display='none'; return; }
+  const actual=c.current_weather ? Math.round(c.current_weather.temperature) : null;
+  n.style.display='';
+  n.innerHTML =
+    '<span class="ic">'+emojiClima(c.current_weather?c.current_weather.weathercode:c.daily.weathercode[0])+'</span>'+
+    '<b>'+(actual!=null?actual+'°':'')+'</b>'+
+    '<small>'+Math.round(c.daily.temperature_2m_max[0])+'° / '+
+      Math.round(c.daily.temperature_2m_min[0])+'°</small>';
+}
 
 /* ---------------- Motas de fondo ---------------- */
 (function motas(){
@@ -1231,13 +1346,35 @@ async function mostrarPausa(it, seg){
     if (layout!=='lateral') P.classList.add('lay-'+layout);
     P.classList.add('ent-'+(['zoom','lateral'].includes(it.anim)?it.anim:'sube'));
     P.classList.add('con-plaqueta');
+  } else if (it && it.tipo==='clima'){
+    await cargarClima();
+    const c=CLIMA.datos;
+    if(c && c.daily && c.daily.time){
+      const hoy=hoyISO();
+      const dias=c.daily.time.map((f,ix)=>{
+        const d=new Date(f+'T12:00:00Z');
+        return '<div class="tc-dia'+(f===hoy?' hoy':'')+'" style="animation-delay:'+(0.15+ix*0.09)+'s">'+
+          '<div class="nombre">'+(f===hoy?'HOY':DIAS_ES[d.getUTCDay()].slice(0,3).toUpperCase())+'</div>'+
+          '<div class="icono">'+emojiClima(c.daily.weathercode[ix])+'</div>'+
+          '<div class="maxima">'+Math.round(c.daily.temperature_2m_max[ix])+'°</div>'+
+          '<div class="minima">'+Math.round(c.daily.temperature_2m_min[ix])+'°</div>'+
+          '<div class="lluvia">☂ '+(c.daily.precipitation_probability_max[ix]!=null?
+            c.daily.precipitation_probability_max[ix]:0)+'%</div>'+
+        '</div>';
+      }).join('');
+      $('tableroClima').innerHTML=
+        '<span class="tc-kicker">EL TIEMPO ESTA SEMANA</span>'+
+        '<div class="tc-titulo">MONTEVIDEO</div>'+
+        '<div class="tc-dias">'+dias+'</div>';
+      P.classList.add('con-clima');
+    } else { usaSplash=true; }   // sin datos, portada de respaldo
   } else if (it && it.tipo==='video'){ usaSplash=true; }
 
   (usaSplash?S:P).classList.add('visible');
   await esperar(seg*1000 - T.transPausa*1000);
   S.classList.remove('visible'); P.classList.remove('visible');
   await esperar(T.transPausa*1000);
-  P.classList.remove('lay-full','lay-banda','lay-texto',
+  P.classList.remove('lay-full','lay-banda','lay-texto','con-clima',
                      'ent-sube','ent-zoom','ent-lateral');
   video.pause(); video.removeAttribute('src'); video.load();
 }
@@ -1304,6 +1441,7 @@ function asomarEditor(){
   if (!banco.length){ $('errorDatos').style.display='grid'; return; }
   armarPool(); construirCiclo();
   pedirWakeLock(); vigilarCambios();
+  cargarClima();
   if (CONFIG.sincronizar){
     correrSync();                        // entra directo a lo que "está pasando"
   } else {
