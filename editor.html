@@ -634,7 +634,7 @@ let config = {
   pausas:{cada:8, items:[{tipo:'splash', duracion:6}]},
   tiempos:{pregunta:30, reveal:9},
   pantalla:{tema:'hca', forma:'redondo', animaciones:'completas', mediaTam:'normal', clima:'si'},
-  carpetaMedia:''
+  carpetaMedia:'https://script.google.com/macros/s/AKfycbxJr4ONAfe4En0vAxGcAB8Mm9U6mYKPvk76Vwc0sB9C09feshnnHyi6uswxbMMpAc2X/exec'
 };
 let mesVisto = new Date();
 let diaElegidoISO = null;
@@ -1064,7 +1064,7 @@ $('impConfig').addEventListener('change', async ev=>{
     if(c.evento) config.evento={...config.evento,...c.evento};
     if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
       items:Array.isArray(c.pausas.items)?c.pausas.items:[]};
-    if(typeof c.carpetaMedia==='string') config.carpetaMedia=c.carpetaMedia;
+    if(typeof c.carpetaMedia==='string' && c.carpetaMedia.trim()) config.carpetaMedia=c.carpetaMedia;
     if(c.tiempos) config.tiempos={...config.tiempos,...c.tiempos};
     if(c.pantalla) config.pantalla={...config.pantalla,...c.pantalla};
     if(c.pausas?.porTanda) config.pausas.porTanda=+c.pausas.porTanda||1;
@@ -1110,7 +1110,7 @@ async function traerDelSitio(){
           if(c.evento) config.evento={...config.evento,...c.evento};
           if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
             items:Array.isArray(c.pausas.items)?c.pausas.items:config.pausas.items};
-          if(typeof c.carpetaMedia==='string') config.carpetaMedia=c.carpetaMedia;}
+          if(typeof c.carpetaMedia==='string' && c.carpetaMedia.trim()) config.carpetaMedia=c.carpetaMedia;}
       }catch(e){}
     }catch(e){
       avisar('No pude leer preguntas ni de la carpeta ni del sitio publicado');
@@ -1496,7 +1496,7 @@ function restaurarBorrador(){
       preguntas=b.preguntas||[];
       calendario=b.calendario||{default:{modo:'todas'},dias:{}};
       if(b.config){
-        if(typeof b.config.carpetaMedia==='string') config.carpetaMedia=b.config.carpetaMedia;
+        if(typeof b.config.carpetaMedia==='string' && b.config.carpetaMedia.trim()) config.carpetaMedia=b.config.carpetaMedia;
         if(b.config.tiempos) config.tiempos={...config.tiempos,...b.config.tiempos};
         if(b.config.pantalla) config.pantalla={...config.pantalla,...b.config.pantalla};
         if(b.config.pausas?.porTanda) config.pausas.porTanda=+b.config.pausas.porTanda||1;
