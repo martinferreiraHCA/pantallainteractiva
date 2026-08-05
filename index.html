@@ -1086,7 +1086,6 @@ function tictac(){
                            MESES_ES[d.getUTCMonth()];
   pintarClimaBarra();
 }
-setInterval(tictac,1000); tictac();
 
 /* ---------------- Clima (Open-Meteo, Montevideo, sin API key) ---------- */
 const CLIMA={datos:null, pedidoEn:0};
@@ -1128,6 +1127,7 @@ function pintarClimaBarra(){
     '<small>'+Math.round(c.daily.temperature_2m_max[0])+'° / '+
       Math.round(c.daily.temperature_2m_min[0])+'°</small>';
 }
+setInterval(tictac,1000); tictac();
 
 /* ---------------- Motas de fondo ---------------- */
 (function motas(){
