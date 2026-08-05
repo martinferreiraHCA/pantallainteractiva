@@ -320,6 +320,12 @@ body{
 .splash.visible .evento-titulo em{animation:destello 3.4s linear 1.1s infinite}
 .splash.visible .evento-titulo em{animation-delay:2s}
 .splash.visible .evento-hca{animation:aparecerDato .55s .65s both}
+.evento-emoji{font-size:8vh;line-height:1;
+  filter:drop-shadow(0 8px 26px rgba(0,0,0,.4));
+  animation:flotarSuave 3.6s ease-in-out infinite alternate}
+@keyframes flotarSuave{from{transform:translateY(.5vh)}to{transform:translateY(-1vh)}}
+.splash.visible .evento-emoji{animation:flotarSuave 3.6s ease-in-out .9s infinite alternate,
+  aparecerDato .5s .1s both}
 .splash .lema{display:flex;gap:1.4vw;font-family:var(--f-display);
   font-weight:700;font-size:clamp(16px,3.2vh,34px);letter-spacing:.18em;
   color:var(--celeste)}
@@ -484,6 +490,7 @@ canvas#confeti{position:fixed;inset:0;z-index:9;pointer-events:none}
   <div class="contenido">
     <img class="logo-blanco" src="logo.png" alt="" onerror="this.style.display='none'">
     <div class="evento">
+      <div class="evento-emoji" id="evEmoji" style="display:none"></div>
       <div class="evento-mes" id="evKicker">MES DE LA</div>
       <div class="evento-titulo"><b id="evL1">CIENCIA</b><span class="y" id="evY">y la</span><em id="evL2">TECNOLOGÍA</em></div>
       <div class="evento-hca" id="evPie">EN EL <b>HCA</b></div>
@@ -749,14 +756,29 @@ function vigilarCambios(){
 }
 
 /* Pinta la temática del evento en el splash */
+const PALETA_PALABRAS={
+  dorado :{a:'#ffc533',b:'#fff3cf',glow:'rgba(255,197,51,.42)'},
+  celeste:{a:'#4fc3f7',b:'#d8f3ff',glow:'rgba(79,195,247,.42)'},
+  coral  :{a:'#ff5d5d',b:'#ffd6d6',glow:'rgba(255,93,93,.42)'},
+  blanco :{a:'#f6f9ff',b:'#ffffff',glow:'rgba(246,249,255,.4)'}
+};
+function pintarPalabra(nodo,color,porDefecto){
+  const c=PALETA_PALABRAS[color]||PALETA_PALABRAS[porDefecto];
+  nodo.style.backgroundImage=
+    `linear-gradient(90deg,${c.a} 28%,${c.b} 50%,${c.a} 72%)`;
+  nodo.style.filter=`drop-shadow(0 0 26px ${c.glow})`;
+}
 function aplicarEvento(){
   const e=CAMPANIA.evento||{};
   const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   const set=(id,txt)=>{const n=$(id); n.style.display=txt?'':'none'; n.textContent=txt||'';};
+  set('evEmoji', e.emoji);
   set('evKicker', e.kicker);
   set('evL1', e.linea1);
   set('evY', e.conector);
   set('evL2', e.linea2);
+  pintarPalabra($('evL1'), e.color1, 'dorado');
+  pintarPalabra($('evL2'), e.color2, 'celeste');
   const pie=$('evPie');
   pie.style.display=e.pie?'':'none';
   pie.innerHTML=esc(e.pie).replace(/HCA/g,'<b>HCA</b>');
