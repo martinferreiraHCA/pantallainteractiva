@@ -539,7 +539,7 @@ input[type=file]{display:none}
       pantallas: colores, forma, cuánta animación y el tamaño de las imágenes.</p>
       <div class="fila dos">
         <div><label>Tema de color</label>
-          <div class="grupo-opciones" data-campo="tema" data-valores="hca:HCA azul,grafito:Grafito,pizarra:Pizarra"></div></div>
+          <div class="grupo-opciones" data-campo="tema" data-valores="hca:HCA azul,grafito:Grafito,pizarra:Pizarra,custom:Personalizado"></div></div>
         <div><label>Forma</label>
           <div class="grupo-opciones" data-campo="forma" data-valores="redondo:Redondo,cuadrado:Cuadrado"></div></div>
       </div>
@@ -548,6 +548,15 @@ input[type=file]{display:none}
           <div class="grupo-opciones" data-campo="animaciones" data-valores="completas:Completas,suaves:Suaves,minimas:Mínimas"></div></div>
         <div><label>Tamaño de imágenes en preguntas</label>
           <div class="grupo-opciones" data-campo="mediaTam" data-valores="chica:Chica,normal:Normal,grande:Grande"></div></div>
+      </div>
+      <div id="panelColores" style="display:none;margin-top:16px;border-top:1px solid var(--borde);padding-top:14px">
+        <label style="margin-bottom:4px">Paleta personalizada</label>
+        <p class="nota" style="margin-bottom:12px">Cada rol tiñe todo el sistema.
+        Referencia oficial HCA (tocá para copiar el código):
+        <span id="chipsHCA"></span></p>
+        <div id="gridColores" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px"></div>
+        <button class="btn btn-fantasma btn-mini" style="margin-top:10px"
+          onclick="restablecerColores()">↺ Restablecer HCA azul</button>
       </div>
       <div class="fila dos" style="margin-top:14px">
         <div><label>Clima de hoy en la barra superior</label>
@@ -1278,6 +1287,55 @@ function pintarRitmo(){
   $('tiempoPregunta').value=config.tiempos?.pregunta??30;
   $('tiempoReveal').value=config.tiempos?.reveal??9;
 }
+const ROLES_COLOR=[
+  ['noche','Fondo profundo','#14172f'],
+  ['fondo','Fondo / paneles','#242b59'],
+  ['medio','Detalles de fondo','#39468f'],
+  ['acento','Acento (timer, chips)','#a4b01d'],
+  ['destacado','Respuesta correcta','#ed8b0d'],
+  ['urgencia','Urgencia del timer','#e1523d'],
+  ['rojo','Marca (HCA)','#bf1818'],
+  ['texto','Texto','#f6f9ff']
+];
+const OFICIALES_HCA=['#242B59','#0C5F55','#A4B01D','#ED8B0D','#E1523D','#BF1818','#252525'];
+function coloresBase(){
+  const b={}; ROLES_COLOR.forEach(([rol,_n,hex])=>b[rol]=hex); return b;
+}
+function pintarPanelColores(){
+  const panel=$('panelColores');
+  const activo=config.pantalla?.tema==='custom';
+  panel.style.display=activo?'block':'none';
+  if(!activo) return;
+  if(!config.pantalla.colores) config.pantalla.colores=coloresBase();
+  const cs=config.pantalla.colores;
+  $('gridColores').innerHTML=ROLES_COLOR.map(([rol,nombre])=>{
+    const v=/^#[0-9a-fA-F]{6}$/.test(cs[rol]||'')?cs[rol]:'#000000';
+    return `<label style="display:flex;align-items:center;gap:8px;border:1.5px solid var(--borde);
+      border-radius:12px;padding:8px 10px;cursor:pointer">
+      <input type="color" value="${v}" style="width:34px;height:30px;border:none;
+        background:none;padding:0;cursor:pointer"
+        oninput="tocarColor('${rol}',this.value)">
+      <span style="flex:1;font-size:13px">${nombre}</span>
+      <code style="font-size:11.5px;color:var(--tinta-suave)">${v}</code>
+    </label>`;
+  }).join('');
+  $('chipsHCA').innerHTML=OFICIALES_HCA.map(h=>
+    `<b title="copiar ${h}" onclick="copiarHex('${h}')" style="display:inline-block;
+      width:18px;height:18px;border-radius:5px;background:${h};cursor:pointer;
+      vertical-align:middle;margin:0 2px;border:1.5px solid rgba(0,0,0,.15)"></b>`).join('');
+}
+function tocarColor(rol,hex){
+  config.pantalla.colores={...(config.pantalla.colores||coloresBase()),[rol]:hex};
+  pintarPanelColores(); previaEvento(); guardarBorrador();
+}
+function copiarHex(h){
+  try{navigator.clipboard.writeText(h);}catch(e){}
+  avisar(h+' copiado');
+}
+function restablecerColores(){
+  config.pantalla.colores=coloresBase();
+  pintarPanelColores(); previaEvento(); guardarBorrador();
+}
 function pintarEstilo(){
   document.querySelectorAll('.grupo-opciones').forEach(g=>{
     const campo=g.dataset.campo;
@@ -1292,7 +1350,7 @@ function pintarEstilo(){
 }
 function elegirEstilo(campo,valor){
   config.pantalla={...config.pantalla,[campo]:valor};
-  pintarEstilo(); guardarBorrador();
+  pintarEstilo(); pintarPanelColores(); previaEvento(); guardarBorrador();
 }
 
 /* ---------- Diseñador de portada ---------- */
@@ -1336,15 +1394,39 @@ function elegirColor(campo,color){
   config.evento[campo]=color;
   pintarSwatches(); previaEvento(); guardarBorrador();
 }
+function aclararHex(hex,f){
+  const m=String(hex||'').match(/^#([0-9a-f]{6})$/i);
+  if(!m) return hex;
+  const n=parseInt(m[1],16), c=[(n>>16)&255,(n>>8)&255,n&255];
+  return '#'+c.map(x=>Math.round(x+(255-x)*f).toString(16).padStart(2,'0')).join('');
+}
 function pintarSwatches(){
   document.querySelectorAll('.selector-color').forEach(cont=>{
     const campo=cont.dataset.campo;
     const actual=config.evento[campo]||(campo==='color1'?'dorado':'celeste');
+    const esHex=/^#/.test(actual);
     cont.innerHTML=Object.keys(COLORES_PORTADA).map(c=>
       `<b title="${NOMBRE_COLOR[c]||c}" class="${c===actual?'activo':''}"
          style="background:linear-gradient(135deg,${COLORES_PORTADA[c][0]},${COLORES_PORTADA[c][1]})"
-         onclick="elegirColor('${campo}','${c}')"></b>`).join('');
+         onclick="elegirColor('${campo}','${c}')"></b>`).join('')
+      +`<b title="Color libre" class="${esHex?'activo':''}"
+         style="background:${esHex?actual:'conic-gradient(red,yellow,lime,cyan,blue,magenta,red)'}"
+         onclick="colorLibre('${campo}')"></b>`;
   });
+}
+function colorLibre(campo){
+  let inp=$('pickPalabra');
+  if(!inp){
+    inp=document.createElement('input');
+    inp.type='color'; inp.id='pickPalabra';
+    inp.style.cssText='position:fixed;left:-9999px';
+    document.body.appendChild(inp);
+  }
+  const actual=config.evento[campo];
+  inp.value=/^#[0-9a-fA-F]{6}$/.test(actual)?actual:'#ed8b0d';
+  inp.oninput=()=>{ config.evento[campo]=inp.value;
+    pintarSwatches(); previaEvento(); guardarBorrador(); };
+  inp.click();
 }
 function pintarPlantillas(){
   $('plantillas').innerHTML=PLANTILLAS.map((p,i)=>
@@ -1358,7 +1440,9 @@ function usarPlantilla(i){
   avisar('Plantilla aplicada — tocá ⬆ Publicar cuando esté lista');
 }
 function pintarPalabraPrev(nodo,color,porDefecto){
-  const c=COLORES_PORTADA[color]||COLORES_PORTADA[porDefecto];
+  let c=COLORES_PORTADA[color];
+  if(!c && /^#[0-9a-fA-F]{6}$/.test(color||'')) c=[color, aclararHex(color,.62)];
+  if(!c) c=COLORES_PORTADA[porDefecto];
   nodo.style.backgroundImage=`linear-gradient(90deg,${c[0]} 28%,${c[1]} 50%,${c[0]} 72%)`;
   nodo.style.webkitBackgroundClip='text';
   nodo.style.backgroundClip='text';
@@ -1366,6 +1450,13 @@ function pintarPalabraPrev(nodo,color,porDefecto){
 }
 function previaEvento(){
   const e=config.evento;
+  const pv=$('previaEvento');
+  if(pv){
+    const cs=config.pantalla?.tema==='custom' ? (config.pantalla.colores||{}) : null;
+    pv.style.background=cs&&/^#/.test(cs.noche||'')
+      ? 'radial-gradient(circle at 50% 30%,'+(cs.fondo||cs.noche)+','+cs.noche+')'
+      : "radial-gradient(circle at 50% 30%,#1b2048,#14172f)";
+  }
   const set=(id,v)=>{const n=$(id);n.textContent=v||'';n.style.display=v?'':'none';};
   set('pvEmoji',e.emoji);
   set('pvKickerTxt',e.kicker);
@@ -1420,7 +1511,7 @@ async function probarCarpeta(avisando){
     if(typeof m!=='object'||Array.isArray(m)) throw 0;
     MAPA_MEDIA = (m.archivos||m.textos) ? (m.archivos||{}) : m;
     TEXTOS_CARPETA = m.textos||{};
-    if(m.version && m.version<35)
+    if(m.version && m.version<36)
       avisar('Hay una versión nueva del script: actualizá apps-script.gs');
     const nombres=Object.keys(MAPA_MEDIA).sort();
     $('dlDrive').innerHTML=nombres.map(n=>`<option value="${escapar(n)}">`).join('');
@@ -1847,6 +1938,7 @@ pintarPlantillas();
 pintarEvento();
 pintarRitmo();
 pintarEstilo();
+pintarPanelColores();
 pintarPausas();
 pintarCarpeta();
 if(config.carpetaMedia) probarCarpeta(false);
