@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trivia HCA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,800&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   PALETA HCA — cambiá los códigos acá si tenés los del manual
+   de marca. Todo el sitio se pinta desde estas variables.
+   ================================================================ */
+:root{
+  --azul-noche:#0b0f24;      /* fondo profundo (mismo matiz del logo) */
+  --azul-hca:#242b59;        /* azul institucional exacto del logo */
+  --azul-medio:#39468f;
+  --celeste:#4fc3f7;         /* acento frío */
+  --dorado:#ffc533;          /* acento cálido / respuesta correcta */
+  --coral:#ff5d5d;           /* urgencia del timer */
+  --crema:#f6f9ff;           /* texto sobre oscuro */
+  --tinta-suave:rgba(246,249,255,.8);
+
+  /* Tipografía y ritmo */
+  --f-display:'Baloo 2', system-ui, sans-serif;
+  --f-body:'Nunito Sans', system-ui, sans-serif;
+  --radio:26px;
+
+  /* Márgenes seguros: las teles suelen recortar bordes (overscan) */
+  --safe-x:4.2vw;
+  --safe-y:2.8vh;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--f-body);
+  background:var(--azul-noche);
+  color:var(--crema);
+  overflow:hidden;
+  cursor:none; /* kiosco: sin puntero */
+}
+
+/* ---------- Fondo ambiente (liviano: solo transform/opacity) ---------- */
+.fondo{position:fixed;inset:0;z-index:0;overflow:hidden}
+.fondo::before,.fondo::after{
+  content:"";position:absolute;width:60vmax;height:60vmax;border-radius:50%;
+  filter:none;opacity:.55;
+}
+.fondo::before{
+  background:radial-gradient(circle, rgba(57,70,143,.62), transparent 62%);
+  top:-22vmax;left:-14vmax;animation:derivaA 26s ease-in-out infinite alternate;
+}
+.fondo::after{
+  background:radial-gradient(circle, rgba(79,195,247,.28), transparent 60%);
+  bottom:-26vmax;right:-16vmax;animation:derivaB 32s ease-in-out infinite alternate;
+}
+@keyframes derivaA{to{transform:translate(6vmax,4vmax) scale(1.08)}}
+@keyframes derivaB{to{transform:translate(-5vmax,-5vmax) scale(1.12)}}
+.mota{position:absolute;border-radius:50%;background:var(--celeste);opacity:.16;
+  animation:flotar linear infinite}
+@keyframes flotar{
+  from{transform:translateY(105vh)}
+  to{transform:translateY(-8vh)}
+}
+.calor{position:absolute;left:50%;bottom:-28vmax;width:80vmax;height:46vmax;
+  transform:translateX(-50%);border-radius:50%;
+  background:radial-gradient(ellipse, rgba(255,197,51,.11), transparent 62%)}
+.vineta{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(125% 95% at 50% 44%, transparent 52%, rgba(2,8,20,.62) 100%)}
+
+/* ---------- Marco superior e inferior ---------- */
+.barra{position:fixed;left:0;right:0;z-index:5;display:flex;align-items:center;
+  justify-content:space-between;padding:var(--safe-y) var(--safe-x)}
+.barra.arriba{top:0}
+.barra.arriba::after{content:"";position:absolute;bottom:0;left:var(--safe-x);
+  right:var(--safe-x);height:2px;
+  background:linear-gradient(90deg,transparent,rgba(79,195,247,.4),transparent)}
+.barra.abajo{bottom:1vh}
+.marca{display:flex;align-items:center;gap:16px}
+.marca img{height:7vh;width:auto;display:block;
+  filter:drop-shadow(0 4px 14px rgba(0,0,0,.4))}
+.marca .nombre{font-family:var(--f-display);font-weight:800;font-size:3.1vh;
+  letter-spacing:.06em}
+.marca .nombre b{color:var(--dorado)}
+.chip-categoria{
+  font-family:var(--f-display);font-weight:700;font-size:2.4vh;
+  background:rgba(79,195,247,.16);border:2px solid rgba(79,195,247,.6);
+  color:var(--celeste);padding:.65vh 1.8vw;border-radius:999px;
+  letter-spacing:.05em;opacity:0;transform:translateY(-8px);
+  transition:opacity .5s,transform .5s;
+}
+.chip-categoria.visible{opacity:1;transform:none}
+.reloj{font-family:var(--f-display);font-weight:700;font-size:3vh;
+  color:var(--tinta-suave);text-align:right;line-height:1.15}
+.reloj small{display:block;font-size:1.8vh;font-weight:600;opacity:.75;
+  text-transform:capitalize}
+
+.progreso{position:fixed;bottom:0;left:0;right:0;height:1vh;z-index:6;
+  background:rgba(255,255,255,.08)}
+.progreso i{display:block;height:100%;width:0;
+  background:linear-gradient(90deg,var(--azul-medio),var(--celeste) 62%,var(--dorado));
+  transition:width .6s ease}
+.pie-lema{font-family:var(--f-display);font-weight:700;font-size:2.1vh;
+  letter-spacing:.26em;color:var(--tinta-suave)}
+.badge-demo{position:fixed;top:2vh;left:50%;transform:translateX(-50%);
+  z-index:9;font-family:var(--f-display);font-weight:700;font-size:1.7vh;
+  background:var(--coral);color:#fff;padding:.4vh 1.4vw;border-radius:999px;
+  letter-spacing:.12em;display:none}
+
+/* ---------- Escenario ---------- */
+.escenario{position:relative;z-index:2;height:100%;display:grid;place-items:center;
+  padding:13vh var(--safe-x) 11.5vh}
+.escena{width:100%;max-width:1720px;display:grid;gap:3.6vh;
+  grid-template-rows:auto auto;align-content:center;
+  transition:transform .7s cubic-bezier(.2,.9,.3,1)}
+.escena.oculta{display:none}
+/* Cuando aparece el dato, la escena cede protagonismo (menos la correcta) */
+.escena.foco-dato{transform:translateY(-4vh)}
+.escena.foco-dato .texto-pregunta{opacity:.35;transition:opacity .5s}
+.escena.foco-dato .panel-media{opacity:.3;transition:opacity .5s}
+.escena.foco-dato .timer{opacity:.4;transition:opacity .5s}
+.escena.foco-dato .opcion.incorrecta{opacity:.07}
+
+/* Cabecera de pregunta: texto + timer (+ media opcional) */
+.zona-pregunta{display:grid;grid-template-columns:1fr auto;gap:3vw;
+  align-items:center}
+.escena.con-media .zona-pregunta{grid-template-columns:1.05fr 1fr auto}
+
+.texto-pregunta{
+  font-family:var(--f-display);font-weight:800;
+  font-size:clamp(30px, 6.4vh, 92px);line-height:1.1;
+  text-wrap:balance;text-shadow:0 4px 26px rgba(0,0,0,.4);
+}
+.texto-pregunta .num{display:flex;align-items:center;gap:1.1vw;
+  font-size:2.2vh;font-weight:700;
+  color:var(--celeste);letter-spacing:.3em;margin-bottom:1.8vh;text-shadow:none}
+.texto-pregunta .num::before{content:"";width:3.4vw;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,var(--dorado),transparent);flex:none}
+
+.panel-media{display:none;justify-self:center}
+.escena.con-media .panel-media{display:block}
+.panel-media img,.panel-media video{
+  max-width:100%;max-height:46vh;border-radius:var(--radio);
+  border:3px solid rgba(79,195,247,.5);display:block;
+  box-shadow:0 18px 60px rgba(0,0,0,.45);
+}
+
+/* ---------- Timer circular ---------- */
+.timer{position:relative;width:17vh;height:17vh;min-width:110px;min-height:110px}
+.timer svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.timer .pista{fill:none;stroke:rgba(255,255,255,.14);stroke-width:10}
+.timer .arco{fill:none;stroke:var(--celeste);stroke-width:10;
+  stroke-linecap:round;transition:stroke .4s;
+  filter:drop-shadow(0 0 10px rgba(79,195,247,.55))}
+.timer .num-seg{position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--f-display);font-weight:800;font-size:6.2vh;
+  color:var(--crema)}
+.timer.urgente .arco{stroke:var(--coral);
+  filter:drop-shadow(0 0 12px rgba(255,93,93,.65))}
+.timer.urgente .num-seg{color:var(--coral);animation:latido .5s ease-in-out infinite}
+@keyframes latido{50%{transform:scale(1.14)}}
+.timer .sello{position:absolute;inset:0;display:grid;place-items:center;
+  font-family:var(--f-display);font-weight:800;font-size:7.6vh;color:var(--dorado);
+  opacity:0;transform:scale(.3) rotate(-40deg)}
+.timer.resuelto .arco{filter:drop-shadow(0 0 12px rgba(255,197,51,.6))}
+.timer.resuelto .arco{stroke:var(--dorado);stroke-dashoffset:0!important}
+.timer.resuelto .num-seg{opacity:0}
+.timer.resuelto .sello{opacity:1;transform:none;
+  transition:opacity .35s,transform .45s cubic-bezier(.2,1.6,.4,1)}
+
+/* ---------- Opciones ---------- */
+.opciones{display:grid;grid-template-columns:1fr 1fr;gap:2.4vh 2.2vw}
+.opciones.solo-dos{grid-template-columns:1fr 1fr}
+.opcion{
+  position:relative;overflow:hidden;
+  display:flex;align-items:center;gap:1.6vw;
+  background:linear-gradient(160deg,rgba(255,255,255,.1),rgba(255,255,255,.045));
+  border:2.5px solid rgba(255,255,255,.2);
+  border-radius:var(--radio);padding:2.7vh 2.1vw;
+  font-size:clamp(20px,3.7vh,46px);font-weight:600;
+  box-shadow:0 10px 30px rgba(0,0,0,.25);
+  transition:opacity .5s,transform .5s,background .35s,border-color .35s,color .35s;
+}
+.opcion .letra{
+  font-family:var(--f-display);font-weight:800;
+  font-size:clamp(20px,3.7vh,44px);
+  width:6.6vh;height:6.6vh;min-width:50px;min-height:50px;
+  display:grid;place-items:center;border-radius:16px;
+  background:linear-gradient(150deg,rgba(79,195,247,.32),rgba(28,92,184,.4));
+  border:2px solid rgba(79,195,247,.45);
+  color:var(--celeste);flex:none;
+}
+.opcion.suspenso{animation:tamborileo .14s ease-in-out 4}
+@keyframes tamborileo{50%{transform:translateX(4px)}}
+.opcion.incorrecta{opacity:.18;transform:scale(.95) translateY(8px);
+  box-shadow:none}
+.opcion.correcta{
+  background:linear-gradient(155deg,#ffd75e,var(--dorado));
+  border-color:#ffe08a;
+  color:var(--azul-noche);font-weight:800;
+  transform:scale(1.04);
+  box-shadow:0 0 0 6px rgba(255,197,51,.28), 0 18px 60px rgba(255,197,51,.4);
+  animation:pulsoCorrecta 1.6s ease-in-out .8s infinite;
+}
+@keyframes pulsoCorrecta{
+  50%{box-shadow:0 0 0 12px rgba(255,197,51,.14), 0 18px 60px rgba(255,197,51,.45)}
+}
+.opcion.correcta::after{ /* barrido de brillo */
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg,transparent 32%,rgba(255,255,255,.6) 50%,transparent 66%);
+  transform:translateX(-130%);animation:barrido 1.4s ease .25s;
+}
+@keyframes barrido{to{transform:translateX(130%)}}
+.opcion.correcta .letra{background:var(--azul-noche);border-color:var(--azul-noche);
+  color:var(--dorado)}
+
+/* ---------- Dato curioso: banda "lower third" estilo TV ---------- */
+.dato{
+  position:fixed;left:0;right:0;bottom:0;z-index:7;
+  transform:translateY(112%);
+  transition:transform .75s cubic-bezier(.16,1.15,.3,1);
+  background:linear-gradient(180deg, rgba(38,46,104,.97), rgba(11,15,36,.99));
+  box-shadow:0 -26px 90px rgba(0,0,0,.6);
+  padding:3.2vh var(--safe-x) 4vh;
+}
+.dato::before{ /* filete dorado superior */
+  content:"";position:absolute;top:0;left:0;right:0;height:4px;
+  background:linear-gradient(90deg,transparent,var(--dorado) 16%,#ffedb8 50%,var(--dorado) 84%,transparent);
+}
+.dato.visible{transform:none}
+.dato-inner{max-width:1720px;margin:0 auto;display:flex;gap:2.4vw;align-items:center}
+.bombilla{position:relative;flex:none;width:11.5vh;height:11.5vh;
+  display:grid;place-items:center;font-size:5.8vh;border-radius:50%;
+  background:radial-gradient(circle at 50% 40%, rgba(255,197,51,.32), rgba(255,197,51,.05) 72%);
+  border:2.5px solid rgba(255,197,51,.65);
+  filter:drop-shadow(0 6px 24px rgba(255,197,51,.25))}
+.bombilla .halo{position:absolute;inset:-16%;border-radius:50%;
+  border:2px solid rgba(255,197,51,.4);animation:halo 2.2s ease-out infinite}
+@keyframes halo{from{transform:scale(.72);opacity:.9}to{transform:scale(1.28);opacity:0}}
+.dato.visible .bombilla{animation:bombillaPop .7s cubic-bezier(.2,1.6,.4,1) .15s both}
+@keyframes bombillaPop{from{transform:scale(.35) rotate(-16deg);opacity:0}
+  to{transform:none;opacity:1}}
+.dato-kicker{display:inline-block;font-family:var(--f-display);font-weight:800;
+  font-size:clamp(20px,3.2vh,40px);letter-spacing:.18em;margin-bottom:1vh;
+  background:linear-gradient(90deg,var(--dorado) 28%,#fff3cf 50%,var(--dorado) 72%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;
+  color:transparent;animation:destello 3.2s linear infinite}
+@keyframes destello{to{background-position:-220% 0}}
+.dato-cuerpo{font-size:clamp(22px,3.6vh,48px);line-height:1.28;font-weight:600;
+  color:var(--crema);text-wrap:pretty;text-shadow:0 3px 18px rgba(0,0,0,.35)}
+.dato.visible .dato-kicker{animation:destello 3.2s linear .9s infinite,
+  aparecerDato .5s .3s both}
+.dato.visible .dato-cuerpo{animation:aparecerDato .55s .45s both}
+@keyframes aparecerDato{from{opacity:0;transform:translateY(14px)}
+  to{opacity:1;transform:none}}
+.dato .chispa{position:absolute;color:var(--dorado);font-size:2.8vh;
+  animation:titilar 1.8s ease-in-out infinite;pointer-events:none}
+.dato .chispa.c1{top:16%;right:5%}
+.dato .chispa.c2{bottom:20%;right:11%;font-size:2vh;animation-delay:.7s}
+.dato .chispa.c3{top:24%;left:2.2%;font-size:1.8vh;animation-delay:1.1s}
+@keyframes titilar{0%,100%{opacity:.12;transform:scale(.75) rotate(0deg)}
+  50%{opacity:1;transform:scale(1.15) rotate(18deg)}}
+.dato-linea{position:absolute;left:0;bottom:0;height:.9vh;width:100%;
+  background:linear-gradient(90deg,var(--azul-medio),var(--celeste) 55%,var(--dorado));
+  border-radius:0 5px 5px 0}
+
+/* ---------- Splash / interludios ---------- */
+.splash{position:fixed;inset:0;z-index:8;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 42%, #1c2354 0%, var(--azul-noche) 62%);
+  opacity:0;pointer-events:none;transition:opacity .7s}
+.splash.visible{opacity:1}
+.splash .aro{position:absolute;width:74vh;height:74vh;border-radius:50%;
+  border:2px solid rgba(79,195,247,.2);
+  box-shadow:inset 0 0 90px rgba(57,70,143,.4), 0 0 70px rgba(57,70,143,.25);
+  animation:respirar 5s ease-in-out infinite}
+@keyframes respirar{50%{transform:scale(1.06)}}
+.splash .contenido{position:relative;text-align:center;display:grid;gap:3vh;
+  justify-items:center}
+.splash.visible .contenido{animation:llegaSplash .8s cubic-bezier(.2,1.35,.3,1)}
+@keyframes llegaSplash{from{opacity:0;transform:scale(.85)}}
+.splash img{height:12vh;width:auto;
+  filter:drop-shadow(0 8px 30px rgba(0,0,0,.5))}
+/* --- Lockup del evento --- */
+.evento{display:grid;justify-items:center;gap:1.8vh}
+.evento-mes{display:flex;align-items:center;gap:1.2vw;
+  font-family:var(--f-display);font-weight:700;
+  font-size:clamp(15px,2.9vh,34px);letter-spacing:.5em;text-indent:.5em;
+  color:var(--celeste)}
+.evento-mes::before,.evento-mes::after{content:"";height:2px;width:4.5vw;
+  border-radius:2px;flex:none;
+  background:linear-gradient(90deg,transparent,var(--celeste))}
+.evento-mes::after{background:linear-gradient(90deg,var(--celeste),transparent)}
+.evento-titulo{font-family:var(--f-display);font-weight:800;text-align:center;
+  font-size:clamp(34px,8.4vh,116px);line-height:1.08;text-wrap:balance;
+  text-shadow:0 6px 30px rgba(0,0,0,.45)}
+.evento-titulo .y{font-weight:700;font-size:.42em;color:var(--crema);
+  opacity:.85;margin:0 .18em;vertical-align:.16em;text-shadow:none}
+.evento-titulo b,.evento-titulo em{font-style:normal;text-shadow:none;
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;
+  color:transparent;animation:destello 3.4s linear infinite}
+.evento-titulo b{ /* CIENCIA */
+  background-image:linear-gradient(90deg,var(--dorado) 28%,#ffedb0 50%,var(--dorado) 72%);
+  filter:drop-shadow(0 0 26px rgba(255,197,51,.4))}
+.evento-titulo em{ /* TECNOLOGÍA */
+  background-image:linear-gradient(90deg,var(--celeste) 28%,#d8f3ff 50%,var(--celeste) 72%);
+  animation-delay:.9s;
+  filter:drop-shadow(0 0 26px rgba(79,195,247,.4))}
+.evento-hca{font-family:var(--f-display);font-weight:800;
+  font-size:clamp(14px,2.7vh,30px);letter-spacing:.26em;text-indent:.26em;
+  color:var(--crema);padding:1vh 2.8vw;border-radius:999px;
+  border:2px solid rgba(255,197,51,.55);background:rgba(255,197,51,.09)}
+.evento-hca b{color:var(--dorado)}
+.splash.visible .evento-mes{animation:aparecerDato .55s .15s both}
+.splash.visible .evento-titulo{animation:tituloPop .75s cubic-bezier(.2,1.4,.35,1) .3s both}
+@keyframes tituloPop{from{opacity:0;transform:scale(.82) translateY(2.4vh)}
+  to{opacity:1;transform:none}}
+.splash.visible .evento-titulo b,
+.splash.visible .evento-titulo em{animation:destello 3.4s linear 1.1s infinite}
+.splash.visible .evento-titulo em{animation-delay:2s}
+.splash.visible .evento-hca{animation:aparecerDato .55s .65s both}
+.splash .lema{display:flex;gap:1.4vw;font-family:var(--f-display);
+  font-weight:700;font-size:clamp(16px,3.2vh,34px);letter-spacing:.18em;
+  color:var(--celeste)}
+.splash .lema span{opacity:0;transform:translateY(14px)}
+.splash.visible .lema span{animation:subir .6s forwards}
+.splash.visible .lema span:nth-child(2){animation-delay:.35s}
+.splash.visible .lema span:nth-child(3){animation-delay:.7s}
+@keyframes subir{to{opacity:1;transform:none}}
+
+/* ---------- Animaciones de entrada / salida de escena ---------- */
+.escena.entra .texto-pregunta,
+.escena.entra .panel-media,
+.escena.entra .timer{animation:llegaArriba .7s cubic-bezier(.2,.9,.3,1.12) both}
+.escena.entra .opcion{opacity:0;animation:llegaOpcion .6s cubic-bezier(.2,.9,.3,1.15) forwards}
+@keyframes llegaArriba{from{opacity:0;transform:translateY(5vh) scale(.97)}
+  to{opacity:1;transform:none}}
+@keyframes llegaOpcion{from{opacity:0;transform:translateX(-3vw)}
+  to{opacity:1;transform:none}}
+.escena.sale{animation:seVa .55s cubic-bezier(.5,0,.8,.4) both}
+@keyframes seVa{to{opacity:0;transform:translateY(-4.5vh) scale(.97)}}
+
+/* ---------- Pantalla de error ---------- */
+.error-datos{position:fixed;inset:0;z-index:10;display:none;place-items:center;
+  background:var(--azul-noche);text-align:center;padding:6vw}
+.error-datos h1{font-family:var(--f-display);font-size:5vh;color:var(--coral);
+  margin-bottom:2vh}
+.error-datos p{font-size:2.6vh;color:var(--tinta-suave);max-width:900px}
+.error-datos code{color:var(--celeste)}
+
+canvas#confeti{position:fixed;inset:0;z-index:9;pointer-events:none}
+
+/* Acceso discreto al editor: invisible en kiosco, aparece al mover/tocar */
+.ir-editor{position:fixed;right:2.2vw;bottom:2.6vh;z-index:10;
+  width:5.4vh;height:5.4vh;min-width:44px;min-height:44px;
+  display:grid;place-items:center;border-radius:50%;
+  background:rgba(36,43,89,.85);border:2px solid rgba(79,195,247,.5);
+  color:var(--crema);text-decoration:none;font-size:2.4vh;
+  opacity:0;transform:translateY(8px);pointer-events:none;
+  transition:opacity .4s,transform .4s;
+  box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.ir-editor.visible{opacity:.92;transform:none;pointer-events:auto}
+
+/* El logo institucional es azul: sobre fondo oscuro lo pasamos a blanco.
+   Si algún día usás un logo a color, sacá la clase logo-blanco del <img>. */
+.logo-blanco{filter:brightness(0) invert(1) drop-shadow(0 3px 12px rgba(0,0,0,.4))}
+
+/* Estado sin animaciones (para entrar a mitad de una pregunta en modo vivo) */
+.escena.instantanea, .escena.instantanea *{animation:none!important;
+  transition:none!important}
+
+/* ---------- Pausas: video promocional o plaqueta de comunicación ---------- */
+.pausa{position:fixed;inset:0;z-index:8;display:grid;place-items:center;
+  background:var(--azul-noche);opacity:0;pointer-events:none;
+  transition:opacity .7s}
+.pausa.visible{opacity:1}
+.pausa video{position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;display:none;background:var(--azul-noche)}
+.pausa.con-video video{display:block}
+.plaqueta{display:none;width:min(1560px,92vw);grid-template-columns:1.1fr 1fr;
+  gap:3.4vw;align-items:center;position:relative;z-index:1}
+.pausa.con-plaqueta .plaqueta{display:grid}
+.plaqueta-kicker{display:inline-block;font-family:var(--f-display);font-weight:800;
+  font-size:clamp(18px,3vh,38px);letter-spacing:.2em;margin-bottom:1.6vh;
+  background:linear-gradient(90deg,var(--dorado) 28%,#fff3cf 50%,var(--dorado) 72%);
+  background-size:220% 100%;-webkit-background-clip:text;background-clip:text;
+  color:transparent;animation:destello 3.2s linear infinite}
+.plaqueta-titulo{font-family:var(--f-display);font-weight:800;
+  font-size:clamp(30px,7vh,96px);line-height:1.06;text-wrap:balance;
+  text-shadow:0 6px 30px rgba(0,0,0,.45)}
+.plaqueta-texto{margin-top:1.8vh;font-size:clamp(18px,3.2vh,42px);
+  line-height:1.35;color:var(--tinta-suave);text-wrap:pretty}
+.plaqueta-imagen{justify-self:center}
+.plaqueta-imagen img{max-width:100%;max-height:64vh;border-radius:var(--radio);
+  border:3px solid rgba(79,195,247,.45);box-shadow:0 24px 70px rgba(0,0,0,.55)}
+.plaqueta.solo-texto{grid-template-columns:1fr;text-align:center;justify-items:center}
+.plaqueta.solo-texto .plaqueta-imagen{display:none}
+.plaqueta.solo-imagen{grid-template-columns:1fr}
+.plaqueta.solo-imagen .plaqueta-tarjeta{display:none}
+.plaqueta.solo-imagen .plaqueta-imagen img{max-height:80vh}
+.pausa.visible .plaqueta-tarjeta{animation:aparecerDato .6s .2s both}
+.pausa.visible .plaqueta-imagen{animation:tituloPop .75s cubic-bezier(.2,1.4,.35,1) .3s both}
+
+@media (max-aspect-ratio:1/1){ /* pantallas verticales */
+  .zona-pregunta,.escena.con-media .zona-pregunta{grid-template-columns:1fr;
+    justify-items:center;text-align:center}
+  .opciones{grid-template-columns:1fr}
+  .timer{width:12vh;height:12vh}
+  .dato-inner{flex-direction:column;text-align:center;gap:1.6vh}
+  .bombilla{width:9vh;height:9vh;font-size:4.6vh}
+  .evento-titulo{font-size:clamp(28px,8vw,90px)}
+  .evento-mes{letter-spacing:.32em;text-indent:.32em}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important}
+}
+</style>
+</head>
+<body>
+
+<div class="fondo" id="fondo"><i class="calor"></i></div>
+<div class="vineta"></div>
+
+<div class="badge-demo" id="badgeDemo">MODO DEMO</div>
+<a class="ir-editor" id="irEditor" href="editor.html" title="Abrir el editor">✎</a>
+
+<header class="barra arriba">
+  <div class="marca">
+    <img class="logo-blanco" src="logo.png" alt="" onerror="this.style.display='none'">
+    <div class="nombre">TRIVIA <b>HCA</b></div>
+  </div>
+  <div class="chip-categoria" id="chipCategoria"></div>
+  <div class="reloj"><span id="hora">--:--</span><small id="fecha"></small></div>
+</header>
+
+<main class="escenario">
+  <section class="escena oculta" id="escena">
+    <div class="zona-pregunta">
+      <h1 class="texto-pregunta" id="textoPregunta"><span class="num" id="numPregunta"></span><span id="cuerpoPregunta"></span></h1>
+      <div class="panel-media" id="panelMedia"></div>
+      <div class="timer" id="timer">
+        <svg viewBox="0 0 120 120">
+          <circle class="pista" cx="60" cy="60" r="54"></circle>
+          <circle class="arco" id="arco" cx="60" cy="60" r="54"></circle>
+        </svg>
+        <div class="num-seg" id="numSeg">30</div>
+        <div class="sello">✔</div>
+      </div>
+    </div>
+    <div class="opciones" id="opciones"></div>
+  </section>
+</main>
+
+<aside class="dato" id="dato">
+  <span class="chispa c1">✦</span>
+  <span class="chispa c2">✦</span>
+  <span class="chispa c3">✦</span>
+  <div class="dato-inner">
+    <div class="bombilla" aria-hidden="true"><span class="halo"></span>💡</div>
+    <div>
+      <div class="dato-kicker">¿SABÍAS QUE…?</div>
+      <p class="dato-cuerpo" id="cuerpoExplicacion"></p>
+    </div>
+  </div>
+  <i class="dato-linea" id="datoLinea"></i>
+</aside>
+
+<div class="pausa" id="pausa">
+  <video id="pausaVideo" muted playsinline preload="auto"></video>
+  <div class="plaqueta" id="plaqueta">
+    <div class="plaqueta-tarjeta">
+      <div class="plaqueta-kicker" id="plaKicker"></div>
+      <div class="plaqueta-titulo" id="plaTitulo"></div>
+      <p class="plaqueta-texto" id="plaTexto"></p>
+    </div>
+    <div class="plaqueta-imagen" id="plaImagen"></div>
+  </div>
+</div>
+
+<div class="splash" id="splash">
+  <i class="aro"></i>
+  <div class="contenido">
+    <img class="logo-blanco" src="logo.png" alt="" onerror="this.style.display='none'">
+    <div class="evento">
+      <div class="evento-mes" id="evKicker">MES DE LA</div>
+      <div class="evento-titulo"><b id="evL1">CIENCIA</b><span class="y" id="evY">y la</span><em id="evL2">TECNOLOGÍA</em></div>
+      <div class="evento-hca" id="evPie">EN EL <b>HCA</b></div>
+    </div>
+    <div class="lema"><span>PENSAR</span><span>•&nbsp;SENTIR&nbsp;•</span><span>ACTUAR</span></div>
+  </div>
+</div>
+
+<div class="error-datos" id="errorDatos">
+  <div>
+    <h1>No pude cargar las preguntas</h1>
+    <p>Revisá que exista <code>preguntas.csv</code> con el formato correcto
+    (mirá el README) y que <code>calendario.json</code> sea un JSON válido.</p>
+  </div>
+</div>
+
+<footer class="barra abajo">
+  <div class="pie-lema">PENSAR • SENTIR • ACTUAR</div>
+  <div class="pie-lema" id="contadorPool"></div>
+</footer>
+<div class="progreso"><i id="barraProgreso"></i></div>
+
+<canvas id="confeti"></canvas>
+
+<script>
+/* ================================================================
+   CONFIGURACIÓN — todo se puede pisar por parámetros en la URL:
+   index.html?tiempo=20&reveal=6&splash=8&categoria=Física&mezclar=0
+   ================================================================ */
+const CONFIG = {
+  segundosPregunta : 30,                    // ?tiempo=
+  segundosReveal   : 9,                     // ?reveal=   (respuesta + dato en pantalla)
+  segundosSplash   : 6,                     // duración del interludio de marca
+  splashCada       : 8,                     // ?splash=   (interludio cada N preguntas)
+  mezclar          : true,                  // ?mezclar=0 para orden del CSV
+  rutaCSV          : 'preguntas.csv',  // ?csv=
+  rutaCalendario   : 'calendario.json',
+  rutaConfig       : 'config.json',    // temática + pausas
+  sincronizar      : true,                  // ?sync=0 → cada pantalla va por su lado
+  categoriaForzada : null                   // ?categoria=  (ignora el calendario)
+};
+
+const urlTrae = {splash:false, csv:false};
+
+(function leerParams(){
+  const p = new URLSearchParams(location.search);
+  if (p.has('tiempo'))    CONFIG.segundosPregunta = Math.max(5, +p.get('tiempo') || 30);
+  if (p.has('reveal'))    CONFIG.segundosReveal   = Math.max(3, +p.get('reveal') || 9);
+  if (p.has('splash')){   CONFIG.splashCada       = Math.max(0, +p.get('splash') || 8);
+                          urlTrae.splash = true; }
+  if (p.has('mezclar'))   CONFIG.mezclar          = p.get('mezclar') !== '0';
+  if (p.has('sync'))      CONFIG.sincronizar      = p.get('sync') !== '0';
+  if (p.has('csv')){      CONFIG.rutaCSV          = p.get('csv');
+                          urlTrae.csv = true; }
+  if (p.has('categoria')) CONFIG.categoriaForzada = p.get('categoria');
+})();
+
+/* ---------------- Preguntas de demostración ----------------
+   Se usan solo si no se puede leer el CSV (primer deploy o vista previa). */
+const DEMO = [
+ {id:'1',categoria:'Física',pregunta:'¿Cuál es, aproximadamente, la velocidad de la luz en el vacío?',opcion_a:'300.000 km/s',opcion_b:'150.000 km/s',opcion_c:'30.000 km/s',opcion_d:'3.000 km/s',correcta:'A',explicacion:'El valor exacto es 299.792 km/s. ¡Nada con masa puede alcanzarla!',imagen:'',video:'',activa:'1'},
+ {id:'2',categoria:'Astronomía',pregunta:'¿Cuál es el planeta más grande del sistema solar?',opcion_a:'Saturno',opcion_b:'Júpiter',opcion_c:'Neptuno',opcion_d:'La Tierra',correcta:'B',explicacion:'Júpiter tiene más masa que todos los demás planetas juntos.',imagen:'',video:'',activa:'1'},
+ {id:'3',categoria:'Física',pregunta:'¿Con qué instrumento se mide la presión atmosférica?',opcion_a:'Termómetro',opcion_b:'Dinamómetro',opcion_c:'Barómetro',opcion_d:'Higrómetro',correcta:'C',explicacion:'Lo inventó Torricelli en 1643 usando una columna de mercurio.',imagen:'',video:'',activa:'1'},
+ {id:'4',categoria:'Ciencias',pregunta:'¿A qué temperatura hierve el agua a nivel del mar?',opcion_a:'90 °C',opcion_b:'80 °C',opcion_c:'120 °C',opcion_d:'100 °C',correcta:'D',explicacion:'En la cima del Everest hierve a unos 70 °C por la menor presión.',imagen:'',video:'',activa:'1'},
+ {id:'5',categoria:'Ciencias',pregunta:'¿Qué gas toman las plantas del aire para hacer la fotosíntesis?',opcion_a:'Oxígeno',opcion_b:'Dióxido de carbono',opcion_c:'Nitrógeno',opcion_d:'Helio',correcta:'B',explicacion:'Y a cambio liberan el oxígeno que respiramos.',imagen:'',video:'',activa:'1'},
+ {id:'6',categoria:'Física',pregunta:'¿Cómo se llama la fuerza que nos mantiene sobre la Tierra?',opcion_a:'Magnetismo',opcion_b:'Fricción',opcion_c:'Gravedad',opcion_d:'Tensión',correcta:'C',explicacion:'Newton la describió en 1687; Einstein la explicó como curvatura del espacio-tiempo.',imagen:'',video:'',activa:'1'},
+ {id:'7',categoria:'Ciencias',pregunta:'¿Cuántos huesos tiene el cuerpo humano adulto?',opcion_a:'206',opcion_b:'150',opcion_c:'320',opcion_d:'98',correcta:'A',explicacion:'Los bebés nacen con unos 300: varios se fusionan al crecer.',imagen:'',video:'',activa:'1'},
+ {id:'8',categoria:'Física',pregunta:'¿Quién formuló las tres leyes del movimiento?',opcion_a:'Galileo Galilei',opcion_b:'Albert Einstein',opcion_c:'Marie Curie',opcion_d:'Isaac Newton',correcta:'D',explicacion:'Las publicó en los "Principia" de 1687.',imagen:'',video:'',activa:'1'},
+ {id:'9',categoria:'Ciencias',pregunta:'¿Cuál es el único metal líquido a temperatura ambiente?',opcion_a:'Plomo',opcion_b:'Mercurio',opcion_c:'Estaño',opcion_d:'Aluminio',correcta:'B',explicacion:'Funde a −39 °C. Por eso se usaba en los termómetros.',imagen:'',video:'',activa:'1'},
+ {id:'10',categoria:'Física',pregunta:'¿En qué unidad se mide la fuerza?',opcion_a:'Joule',opcion_b:'Watt',opcion_c:'Newton',opcion_d:'Pascal',correcta:'C',explicacion:'1 newton acelera 1 kg a razón de 1 m/s² .',imagen:'',video:'',activa:'1'},
+ {id:'11',categoria:'Astronomía',pregunta:'¿Cómo se llama la galaxia en la que vivimos?',opcion_a:'Andrómeda',opcion_b:'El Sombrero',opcion_c:'La Vía Láctea',opcion_d:'El Remolino',correcta:'C',explicacion:'Tiene entre 100.000 y 400.000 millones de estrellas.',imagen:'',video:'',activa:'1'},
+ {id:'12',categoria:'Cultura general',pregunta:'En el cuento de Andersen, ¿en qué se convierte el patito feo?',opcion_a:'En un cisne',opcion_b:'En un ganso',opcion_c:'En un pavo real',opcion_d:'En una garza',correcta:'A',explicacion:'Hans Christian Andersen lo publicó en 1843.',imagen:'',video:'',activa:'1'}
+];
+
+/* ---------------- Multimedia desde Google Drive ----------------
+   Se puede pegar el link de Drive tal cual (Compartir → cualquiera con el
+   enlace). Acá se convierte a una URL directa que la pantalla puede mostrar. */
+function idDrive(u){
+  const m=String(u).match(/\/d\/([-\w]{20,})/) || String(u).match(/[?&]id=([-\w]{20,})/);
+  return m ? m[1] : null;
+}
+function urlDrive(id, tipo){
+  return tipo==='video'
+    ? 'https://drive.google.com/uc?export=download&id='+id
+    : 'https://drive.google.com/thumbnail?id='+id+'&sz=w1920';
+}
+function resolverMedia(ruta, tipo){
+  if(!ruta) return ruta;
+  ruta=String(ruta).trim();
+  if(/drive\.google\.com|docs\.google\.com/.test(ruta)){
+    const id=idDrive(ruta);
+    if(id) return urlDrive(id, tipo);
+  }
+  if(!/[\/:]/.test(ruta)){   // nombre pelado → carpeta de media en Drive
+    let id=MAPA_MEDIA[ruta];
+    if(!id){
+      const clave=Object.keys(MAPA_MEDIA)
+        .find(n=>n.toLowerCase()===ruta.toLowerCase());
+      if(clave) id=MAPA_MEDIA[clave];
+    }
+    if(id) return urlDrive(id, tipo);
+  }
+  return ruta;
+}
+
+/* ---------------- Parser CSV (maneja comillas, comas y saltos) -------- */
+function parseCSV(texto){
+  texto = texto.replace(/^\uFEFF/,'');
+  const filas=[]; let fila=[], celda='', entreComillas=false;
+  for (let i=0;i<texto.length;i++){
+    const c=texto[i];
+    if (entreComillas){
+      if (c==='"'){
+        if (texto[i+1]==='"'){celda+='"';i++;}
+        else entreComillas=false;
+      } else celda+=c;
+    } else if (c==='"') entreComillas=true;
+    else if (c===','){fila.push(celda);celda='';}
+    else if (c==='\n'||c==='\r'){
+      if (c==='\r'&&texto[i+1]==='\n') i++;
+      fila.push(celda);celda='';
+      if (fila.some(v=>v.trim()!=='')) filas.push(fila);
+      fila=[];
+    } else celda+=c;
+  }
+  fila.push(celda);
+  if (fila.some(v=>v.trim()!=='')) filas.push(fila);
+  if (!filas.length) return [];
+  const cab=filas[0].map(h=>h.trim().toLowerCase());
+  return filas.slice(1).map(f=>{
+    const o={}; cab.forEach((h,idx)=>o[h]=(f[idx]??'').trim()); return o;
+  });
+}
+
+/* ---------------- Estado ---------------- */
+let banco=[], calendario={default:{modo:'todas'},dias:{}};
+let pool=[], fechaPoolISO='';
+let modoDemo=false, debeRecargar=false, firmaDatos='';
+let MAPA_MEDIA={};   // nombre de archivo → id de Drive (carpeta de media)
+
+/* Temática del splash + pausas (video/plaqueta). Se pisa con config.json */
+let CAMPANIA = {
+  evento:{kicker:'MES DE LA', linea1:'CIENCIA', conector:'y la',
+          linea2:'TECNOLOGÍA', pie:'EN EL HCA'},
+  pausas:{cada:8, items:[{tipo:'splash', duracion:6}]},
+  carpetaMedia:''   // URL del Apps Script que lista la carpeta de Drive
+};
+
+const $=id=>document.getElementById(id);
+const CIRC = 2*Math.PI*54;
+$('arco').style.strokeDasharray = CIRC;
+
+/* ---------------- Carga de datos ----------------
+   Las preguntas viven en la carpeta de Drive (un CSV o una Google Sheet
+   llamada "preguntas"): eso manda. El repo queda de respaldo, y si todo
+   falla entra el DEMO. */
+async function traerTexto(ruta, msTope=8000){
+  const ctl=new AbortController();
+  const tm=setTimeout(()=>ctl.abort(), msTope);
+  try{
+    const sep = ruta.includes('?') ? '&' : '?';
+    const r=await fetch(ruta+sep+'t='+Date.now(),{cache:'no-store',signal:ctl.signal});
+    if(!r.ok) throw 0;
+    return await r.text();
+  } finally { clearTimeout(tm); }
+}
+function firmaDe(t){
+  let h=7; for(let i=0;i<t.length;i++) h=(h*31+t.charCodeAt(i))>>>0;
+  return t.length+'·'+h;
+}
+function textoDe(textos, nombre){
+  if(textos[nombre]!=null) return textos[nombre];
+  const k=Object.keys(textos).find(n=>n.toLowerCase()===nombre);
+  return k ? textos[k] : null;
+}
+function aplicarConfig(c, esRepo){
+  if(!c) return;
+  if(c.evento) CAMPANIA.evento={...CAMPANIA.evento, ...c.evento};
+  if(c.pausas){
+    if(Array.isArray(c.pausas.items) && c.pausas.items.length)
+      CAMPANIA.pausas.items=c.pausas.items;
+    if(c.pausas.cada!=null) CAMPANIA.pausas.cada=Math.max(0,+c.pausas.cada||0);
+  }
+  if(esRepo && typeof c.carpetaMedia==='string')
+    CAMPANIA.carpetaMedia=c.carpetaMedia.trim();
+}
+
+/* Lee todas las fuentes en el mismo orden siempre: la firma resultante
+   sirve tanto para cargar como para detectar cambios (push al repo,
+   archivo nuevo en la carpeta o edición de la Sheet de preguntas). */
+async function leerFuentes(){
+  const F={crudo:'', cfgRepo:null, carpeta:null, csvRepo:null, calRepo:null};
+  try{ const t=await traerTexto(CONFIG.rutaConfig);
+       F.cfgRepo=JSON.parse(t); F.crudo+=t; }catch(e){}
+  const url=(F.cfgRepo && typeof F.cfgRepo.carpetaMedia==='string'
+              ? F.cfgRepo.carpetaMedia.trim() : '') || CAMPANIA.carpetaMedia;
+  if(url){
+    try{ const t=await traerTexto(url, 12000);
+         F.carpeta=JSON.parse(t); F.crudo+=t; }catch(e){}
+  }
+  const textos = (F.carpeta && F.carpeta.textos) || {};
+  const hayPregDrive = !urlTrae.csv && textoDe(textos,'preguntas.csv')!=null;
+  if(!hayPregDrive){
+    try{ F.csvRepo=await traerTexto(CONFIG.rutaCSV); F.crudo+=F.csvRepo; }catch(e){}
+  }
+  if(textoDe(textos,'calendario.json')==null){
+    try{ F.calRepo=await traerTexto(CONFIG.rutaCalendario); F.crudo+=F.calRepo; }catch(e){}
+  }
+  return F;
+}
+
+async function cargarDatos(){
+  const F=await leerFuentes();
+  aplicarConfig(F.cfgRepo, true);
+
+  MAPA_MEDIA={}; let textos={};
+  if(F.carpeta && typeof F.carpeta==='object'){
+    if(F.carpeta.archivos || F.carpeta.textos){
+      MAPA_MEDIA=F.carpeta.archivos||{};
+      textos=F.carpeta.textos||{};
+    } else MAPA_MEDIA=F.carpeta;   // formato viejo del script: mapa plano
+  }
+  const cfgDrive=textoDe(textos,'config.json');
+  if(cfgDrive){ try{ aplicarConfig(JSON.parse(cfgDrive), false); }catch(e){} }
+
+  banco=[];
+  const csvDrive = urlTrae.csv ? null : textoDe(textos,'preguntas.csv');
+  if(csvDrive){ try{ banco=parseCSV(csvDrive); }catch(e){} }
+  if(!banco.length && F.csvRepo){ try{ banco=parseCSV(F.csvRepo); }catch(e){} }
+  modoDemo=!banco.length;
+  if(modoDemo) banco=DEMO;
+  $('badgeDemo').style.display=modoDemo?'block':'none';
+
+  calendario={default:{modo:'todas'},dias:{}};
+  const calDrive=textoDe(textos,'calendario.json');
+  try{
+    if(calDrive) calendario=JSON.parse(calDrive);
+    else if(F.calRepo) calendario=JSON.parse(F.calRepo);
+  }catch(e){}
+
+  banco = banco.filter(p => (p.activa??'1') !== '0' && p.pregunta);
+  firmaDatos=firmaDe(F.crudo);
+  aplicarEvento();
+}
+
+/* Cada 5 min relee las mismas fuentes: si algo cambió (repo, carpeta o
+   Sheet), recarga al terminar el ítem en curso */
+function vigilarCambios(){
+  setInterval(async ()=>{
+    try{
+      const F=await leerFuentes();
+      if(F.crudo && firmaDe(F.crudo)!==firmaDatos) debeRecargar=true;
+    }catch(e){}
+  }, 5*60*1000);
+}
+
+/* Pinta la temática del evento en el splash */
+function aplicarEvento(){
+  const e=CAMPANIA.evento||{};
+  const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  const set=(id,txt)=>{const n=$(id); n.style.display=txt?'':'none'; n.textContent=txt||'';};
+  set('evKicker', e.kicker);
+  set('evL1', e.linea1);
+  set('evY', e.conector);
+  set('evL2', e.linea2);
+  const pie=$('evPie');
+  pie.style.display=e.pie?'':'none';
+  pie.innerHTML=esc(e.pie).replace(/HCA/g,'<b>HCA</b>');
+}
+
+/* ---------------- Pool según calendario ---------------- */
+function hoyISO(){
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+function mezclarArr(a, rnd){
+  rnd = rnd || Math.random;
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(rnd()*(i+1));[a[i],a[j]]=[a[j],a[i]];}
+  return a;
+}
+/* PRNG con semilla: mismo día → mismo orden en todas las pantallas */
+function rngConSemilla(sem){
+  return function(){
+    sem|=0; sem=(sem+0x6D2B79F5)|0;
+    let t=Math.imul(sem^(sem>>>15),1|sem);
+    t=(t+Math.imul(t^(t>>>7),61|t))^t;
+    return ((t^(t>>>14))>>>0)/4294967296;
+  };
+}
+function semillaDelDia(){
+  let h=7; for(const c of fechaPoolISO) h=(h*31+c.charCodeAt(0))>>>0;
+  return h;
+}
+function armarPool(){
+  fechaPoolISO = hoyISO();
+  let lista = banco.slice();
+  const regla = CONFIG.categoriaForzada
+    ? {categoria: CONFIG.categoriaForzada}
+    : (calendario.dias?.[fechaPoolISO] ?? null);
+  if (regla?.categoria)
+    lista = lista.filter(p => (p.categoria||'').toLowerCase() === regla.categoria.toLowerCase());
+  else if (regla?.ids?.length)
+    lista = lista.filter(p => regla.ids.map(String).includes(String(p.id)));
+  if (!lista.length) lista = banco.slice();   // regla vacía → todas
+  pool = CONFIG.mezclar
+    ? mezclarArr(lista, CONFIG.sincronizar ? rngConSemilla(semillaDelDia()) : Math.random)
+    : lista;
+}
+
+/* ============ Línea de tiempo del día (modo "en vivo") ============
+   Con GitHub Pages no hay servidor: la sincronía se logra porque cada
+   pantalla calcula, a partir de la hora, qué ítem del ciclo toca ahora.
+   Requiere que la hora del dispositivo esté bien (se ajusta sola por red). */
+const T = {entrada:1.0, suspenso:0.7, respiro:1.4, salida:0.75, transPausa:0.8};
+let CICLO=[];
+
+function duracionPregunta(){
+  return T.entrada + CONFIG.segundosPregunta + T.suspenso + T.respiro
+       + CONFIG.segundosReveal + T.salida;
+}
+function construirCiclo(){
+  const cada=CAMPANIA.pausas.cada|0, items=CAMPANIA.pausas.items||[];
+  const ciclo=[]; let iP=0;
+  pool.forEach((p,i)=>{
+    ciclo.push({tipo:'pregunta', p, n:i+1, dur:duracionPregunta()});
+    if(cada>0 && (i+1)%cada===0 && items.length){
+      const it=items[iP++ % items.length];
+      ciclo.push({tipo:'pausa', it, dur:Math.max(3,+it.duracion||8)+T.transPausa});
+    }
+  });
+  CICLO=ciclo;
+}
+function segundosDeHoy(){
+  const d=new Date();
+  return d.getHours()*3600 + d.getMinutes()*60 + d.getSeconds() + d.getMilliseconds()/1000;
+}
+function localizar(){
+  const total=CICLO.reduce((a,b)=>a+b.dur,0) || 1;
+  let t=segundosDeHoy()%total;
+  for(let i=0;i<CICLO.length;i++){
+    if(t<CICLO[i].dur) return {i, off:t};
+    t-=CICLO[i].dur;
+  }
+  return {i:0, off:0};
+}
+
+/* ---------------- Reloj de la barra ---------------- */
+function tictac(){
+  const d=new Date();
+  $('hora').textContent = d.toLocaleTimeString('es-UY',{hour:'2-digit',minute:'2-digit'});
+  $('fecha').textContent = d.toLocaleDateString('es-UY',{weekday:'long',day:'numeric',month:'long'});
+}
+setInterval(tictac,1000); tictac();
+
+/* ---------------- Motas de fondo ---------------- */
+(function motas(){
+  const f=$('fondo');
+  for(let i=0;i<14;i++){
+    const m=document.createElement('i'); m.className='mota';
+    const t=6+Math.random()*10;
+    m.style.cssText=`left:${Math.random()*100}vw;width:${t}px;height:${t}px;`+
+      `animation-duration:${18+Math.random()*22}s;animation-delay:${-Math.random()*30}s;`+
+      `opacity:${.06+Math.random()*.14}`;
+    f.appendChild(m);
+  }
+})();
+
+/* ---------------- Confeti ---------------- */
+const lienzo=$('confeti'), ctx=lienzo.getContext('2d');
+let particulas=[];
+const sinMovimiento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+function ajustarLienzo(){lienzo.width=innerWidth;lienzo.height=innerHeight;}
+addEventListener('resize',ajustarLienzo); ajustarLienzo();
+function estallar(x,y){
+  if (sinMovimiento) return;
+  const colores=['#ffc533','#4fc3f7','#f6f9ff','#1c5cb8'];
+  for(let i=0;i<130;i++){
+    const a=Math.random()*Math.PI*2, v=4+Math.random()*9;
+    particulas.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-3,
+      g:.22+Math.random()*.12,t:70+Math.random()*40,
+      c:colores[i%colores.length],s:4+Math.random()*6,r:Math.random()*Math.PI});
+  }
+  if (particulas.length===130) animarConfeti();
+}
+function animarConfeti(){
+  ctx.clearRect(0,0,lienzo.width,lienzo.height);
+  particulas.forEach(p=>{
+    p.x+=p.vx; p.y+=p.vy; p.vy+=p.g; p.t--; p.r+=.1;
+    ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.r);
+    ctx.globalAlpha=Math.max(0,Math.min(1,p.t/40));
+    ctx.fillStyle=p.c; ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s*.6); ctx.restore();
+  });
+  particulas=particulas.filter(p=>p.t>0 && p.y<lienzo.height+40);
+  if (particulas.length) requestAnimationFrame(animarConfeti);
+  else ctx.clearRect(0,0,lienzo.width,lienzo.height);
+}
+
+/* ---------------- Timer ---------------- */
+let rafTimer=null;
+function correrTimer(segundos, alTerminar){
+  const t0=performance.now(), timer=$('timer');
+  timer.classList.remove('urgente','resuelto');
+  function paso(ahora){
+    const trans=(ahora-t0)/1000, resta=Math.max(0,segundos-trans);
+    $('numSeg').textContent=Math.ceil(resta);
+    $('arco').style.strokeDashoffset = CIRC*(1-resta/segundos);
+    if (resta<=5.05) timer.classList.add('urgente');
+    if (resta<=0){ alTerminar(); return; }
+    rafTimer=requestAnimationFrame(paso);
+  }
+  rafTimer=requestAnimationFrame(paso);
+}
+
+/* ---------------- Escenas ---------------- */
+function esperar(ms){return new Promise(r=>setTimeout(r,Math.max(0,ms)));}
+
+function pintarPregunta(p,n){
+  const escena=$('escena');
+  $('numPregunta').textContent = `PREGUNTA ${n} DE ${pool.length}` + (p.categoria?`  ·  ${p.categoria.toUpperCase()}`:'');
+  $('cuerpoPregunta').textContent = p.pregunta;
+  $('chipCategoria').textContent = p.categoria || '';
+  $('chipCategoria').classList.toggle('visible', !!p.categoria);
+
+  // Media
+  const pm=$('panelMedia'); pm.innerHTML='';
+  let hayMedia=false;
+  if (p.video){
+    const v=document.createElement('video');
+    v.src=resolverMedia(p.video,'video'); v.muted=true; v.loop=true; v.autoplay=true; v.playsInline=true;
+    v.onerror=()=>{pm.innerHTML='';escena.classList.remove('con-media');};
+    pm.appendChild(v); hayMedia=true;
+  } else if (p.imagen){
+    const im=document.createElement('img');
+    im.src=resolverMedia(p.imagen,'imagen'); im.alt='';
+    im.onerror=()=>{pm.innerHTML='';escena.classList.remove('con-media');};
+    pm.appendChild(im); hayMedia=true;
+  }
+  escena.classList.toggle('con-media',hayMedia);
+
+  // Opciones
+  const cont=$('opciones'); cont.innerHTML='';
+  const letras=['A','B','C','D'];
+  const presentes=letras.filter(L=>p['opcion_'+L.toLowerCase()]);
+  presentes.forEach((L,i)=>{
+    const d=document.createElement('div');
+    d.className='opcion'; d.dataset.letra=L;
+    d.style.animationDelay=(0.25+i*0.13)+'s';
+    d.innerHTML=`<span class="letra">${L}</span><span>${escapar(p['opcion_'+L.toLowerCase()])}</span>`;
+    cont.appendChild(d);
+  });
+  cont.classList.toggle('solo-dos',presentes.length<=2);
+
+  $('barraProgreso').style.width = ((n-1)/pool.length*100)+'%';
+  $('contadorPool').textContent = `${n} / ${pool.length}`;
+}
+function escapar(s){const d=document.createElement('span');d.textContent=s;return d.innerHTML;}
+
+function marcarRespuesta(p,{confeti=true}={}){
+  const correcta=(p.correcta||'A').trim().toUpperCase();
+  let nodo=null;
+  document.querySelectorAll('.opcion').forEach(o=>{
+    o.classList.remove('suspenso');
+    if (o.dataset.letra===correcta){o.classList.add('correcta');nodo=o;}
+    else o.classList.add('incorrecta');
+  });
+  $('timer').classList.add('resuelto');
+  if (confeti && nodo){
+    const r=nodo.getBoundingClientRect();
+    estallar(r.left+r.width/2, r.top+r.height/2);
+  }
+}
+function mostrarDato(p,seg,fraccion){
+  if (!p.explicacion) return;
+  $('cuerpoExplicacion').textContent = p.explicacion;
+  $('escena').classList.add('foco-dato');
+  $('dato').classList.add('visible');
+  const linea=$('datoLinea');
+  linea.style.transition='none'; linea.style.width=(fraccion*100)+'%';
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    linea.style.transition=`width ${seg}s linear`;
+    linea.style.width='0%';
+  }));
+}
+function ocultarDato(){
+  $('dato').classList.remove('visible');
+  $('escena').classList.remove('foco-dato');
+}
+
+/* Juega una pregunta completa. off = segundos ya transcurridos del ítem
+   (0 en modo libre; en modo vivo puede caer en cualquier fase). */
+async function jugarPregunta(item, off=0){
+  const p=item.p, escena=$('escena');
+  const tTimer=CONFIG.segundosPregunta, tReveal=CONFIG.segundosReveal;
+  const finTimer=T.entrada+tTimer,
+        finMarca=finTimer+T.suspenso+T.respiro,
+        finDato =finMarca+tReveal;
+
+  pintarPregunta(p,item.n);
+  escena.classList.remove('oculta','sale');
+
+  if (off<=0.4){                       // arranque normal con entrada animada
+    escena.classList.add('entra');
+    await esperar(T.entrada*1000);
+    escena.classList.remove('entra');
+  } else {                             // caímos a mitad del ítem: sin animaciones
+    escena.classList.add('instantanea');
+    await esperar(30);
+    escena.classList.remove('instantanea');
+  }
+
+  if (off<finTimer){
+    const resta=Math.max(1, finTimer-Math.max(off,T.entrada));
+    await new Promise(fin=>correrTimer(resta,fin));
+    document.querySelectorAll('.opcion').forEach(o=>o.classList.add('suspenso'));
+    await esperar(T.suspenso*1000);
+    marcarRespuesta(p);
+    await esperar(T.respiro*1000);      // la respuesta respira sola un momento
+    mostrarDato(p,tReveal,1);
+    await esperar(tReveal*1000);
+  } else if (off<finDato){             // entramos con la respuesta ya revelada
+    marcarRespuesta(p,{confeti: off<finMarca+2});
+    const resta=Math.max(.8, finDato-Math.max(off,finMarca));
+    mostrarDato(p,resta,resta/tReveal);
+    await esperar(resta*1000);
+  }
+
+  ocultarDato();
+  escena.classList.add('sale');
+  await esperar(T.salida*1000);
+  escena.classList.add('oculta'); escena.classList.remove('sale');
+}
+
+/* Pausa entre tandas: splash de marca, video promocional o plaqueta */
+async function mostrarPausa(it, seg){
+  const P=$('pausa'), S=$('splash'), video=$('pausaVideo'), plq=$('plaqueta');
+  P.classList.remove('con-video','con-plaqueta');
+  let usaSplash = !it || (it.tipo!=='video' && it.tipo!=='plaqueta');
+
+  if (it && it.tipo==='video' && it.src){
+    video.onerror=()=>{ P.classList.remove('visible','con-video');
+                        S.classList.add('visible'); };
+    video.src=resolverMedia(it.src,'video'); video.loop=true; video.currentTime=0;
+    P.classList.add('con-video');
+    video.play().catch(()=>{});
+  } else if (it && it.tipo==='plaqueta'){
+    $('plaKicker').textContent = it.kicker || 'NOVEDADES';
+    $('plaTitulo').textContent = it.titulo || '';
+    $('plaTexto').textContent  = it.texto  || '';
+    $('plaTexto').style.display = it.texto ? '' : 'none';
+    const cont=$('plaImagen'); cont.innerHTML='';
+    if (it.imagen){
+      const im=new Image(); im.src=resolverMedia(it.imagen,'imagen'); im.alt='';
+      im.onerror=()=>{cont.innerHTML='';plq.classList.add('solo-texto');};
+      cont.appendChild(im);
+    }
+    plq.classList.toggle('solo-texto', !it.imagen);
+    plq.classList.toggle('solo-imagen', !!it.imagen && !it.titulo && !it.texto);
+    P.classList.add('con-plaqueta');
+  } else if (it && it.tipo==='video'){ usaSplash=true; }
+
+  (usaSplash?S:P).classList.add('visible');
+  await esperar(seg*1000 - T.transPausa*1000);
+  S.classList.remove('visible'); P.classList.remove('visible');
+  await esperar(T.transPausa*1000);
+  video.pause(); video.removeAttribute('src'); video.load();
+}
+
+/* ---------------- Ciclos ---------------- */
+async function refrescarSiCorresponde(){
+  if (hoyISO()!==fechaPoolISO || debeRecargar){
+    if (debeRecargar){ debeRecargar=false; await cargarDatos(); }
+    armarPool(); construirCiclo();
+  }
+}
+
+/* Modo EN VIVO: todas las pantallas calculan el mismo punto del día */
+async function correrSync(){
+  for(;;){
+    await refrescarSiCorresponde();
+    const {i,off}=localizar(), item=CICLO[i];
+    if (item.tipo==='pregunta') await jugarPregunta(item, off);
+    else await mostrarPausa(item.it, Math.max(1.5, item.dur-off));
+    const pos=localizar();               // corrección de deriva en el borde
+    if (pos.i===i) await esperar((CICLO[i].dur-pos.off)*1000+30);
+  }
+}
+
+/* Modo LIBRE (?sync=0): cada pantalla avanza a su ritmo */
+async function correrLibre(){
+  let idx=0, desdePausa=0, iP=0;
+  for(;;){
+    await refrescarSiCorresponde();
+    if (idx>=pool.length) idx=0;
+    await jugarPregunta({p:pool[idx], n:idx+1}, 0);
+    idx=(idx+1)%pool.length; desdePausa++;
+    const cada=CAMPANIA.pausas.cada|0, items=CAMPANIA.pausas.items||[];
+    if (cada>0 && desdePausa>=cada && items.length){
+      desdePausa=0;
+      const it=items[iP++ % items.length];
+      await mostrarPausa(it, Math.max(3,+it.duracion||8)+T.transPausa);
+    }
+  }
+}
+
+/* ---------------- Pantalla siempre encendida (si el navegador lo permite) */
+async function pedirWakeLock(){
+  try{ await navigator.wakeLock?.request('screen'); }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pedirWakeLock(); });
+
+/* Botón del editor: se asoma con actividad del usuario y se esconde solo */
+let tmrEditor=null;
+function asomarEditor(){
+  const b=$('irEditor'); b.classList.add('visible');
+  clearTimeout(tmrEditor);
+  tmrEditor=setTimeout(()=>b.classList.remove('visible'), 4000);
+}
+['mousemove','touchstart','keydown'].forEach(ev=>
+  addEventListener(ev, asomarEditor, {passive:true}));
+
+/* ---------------- Arranque ---------------- */
+(async function(){
+  await cargarDatos();
+  if (!banco.length){ $('errorDatos').style.display='grid'; return; }
+  armarPool(); construirCiclo();
+  pedirWakeLock(); vigilarCambios();
+  if (CONFIG.sincronizar){
+    correrSync();                        // entra directo a lo que "está pasando"
+  } else {
+    await mostrarPausa(null, 3.8);       // splash de bienvenida y arranca
+    correrLibre();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+id,categoria,pregunta,opcion_a,opcion_b,opcion_c,opcion_d,correcta,explicacion,imagen,video,activa
+1,Física,"¿Cuál es, aproximadamente, la velocidad de la luz en el vacío?",300.000 km/s,150.000 km/s,30.000 km/s,3.000 km/s,A,El valor exacto es 299.792 km/s. ¡Nada con masa puede alcanzarla!,,,1
+2,Astronomía,¿Cuál es el planeta más grande del sistema solar?,Saturno,Júpiter,Neptuno,La Tierra,B,Júpiter tiene más masa que todos los demás planetas juntos.,,,1
+3,Física,¿Con qué instrumento se mide la presión atmosférica?,Termómetro,Dinamómetro,Barómetro,Higrómetro,C,Lo inventó Torricelli en 1643 usando una columna de mercurio.,,,1
+4,Ciencias,¿A qué temperatura hierve el agua a nivel del mar?,90 °C,80 °C,120 °C,100 °C,D,En la cima del Everest hierve a unos 70 °C por la menor presión.,,,1
+5,Ciencias,¿Qué gas toman las plantas del aire para hacer la fotosíntesis?,Oxígeno,Dióxido de carbono,Nitrógeno,Helio,B,Y a cambio liberan el oxígeno que respiramos.,,,1
+6,Física,¿Cómo se llama la fuerza que nos mantiene sobre la Tierra?,Magnetismo,Fricción,Gravedad,Tensión,C,Newton la describió en 1687; Einstein la explicó como curvatura del espacio-tiempo.,,,1
+7,Ciencias,¿Cuántos huesos tiene el cuerpo humano adulto?,206,150,320,98,A,Los bebés nacen con unos 300: varios se fusionan al crecer.,,,1
+8,Física,¿Quién formuló las tres leyes del movimiento?,Galileo Galilei,Albert Einstein,Marie Curie,Isaac Newton,D,"Las publicó en los ""Principia"" de 1687.",,,1
+9,Ciencias,¿Cuál es el único metal líquido a temperatura ambiente?,Plomo,Mercurio,Estaño,Aluminio,B,Funde a −39 °C. Por eso se usaba en los termómetros.,,,1
+10,Física,¿En qué unidad se mide la fuerza?,Joule,Watt,Newton,Pascal,C,1 newton acelera 1 kg a razón de 1 m/s².,,,1
+11,Astronomía,¿Cómo se llama la galaxia en la que vivimos?,Andrómeda,El Sombrero,La Vía Láctea,El Remolino,C,Tiene entre 100.000 y 400.000 millones de estrellas.,,,1
+12,Cultura general,"En el cuento de Andersen, ¿en qué se convierte el patito feo?",En un cisne,En un ganso,En un pavo real,En una garza,A,Hans Christian Andersen lo publicó en 1843.,,,1

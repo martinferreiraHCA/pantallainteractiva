@@ -1,0 +1,27 @@
+{
+  "evento": {
+    "kicker": "MES DE LA",
+    "linea1": "CIENCIA",
+    "conector": "y la",
+    "linea2": "TECNOLOGÍA",
+    "pie": "EN EL HCA"
+  },
+  "pausas": {
+    "cada": 4,
+    "items": [
+      {
+        "tipo": "splash",
+        "duracion": 6
+      },
+      {
+        "tipo": "plaqueta",
+        "duracion": 10,
+        "kicker": "NOVEDADES",
+        "titulo": "Feria de Ciencias 2026",
+        "texto": "Del 14 al 18 de setiembre en el gimnasio. ¡Traé tu proyecto!",
+        "imagen": ""
+      }
+    ]
+  },
+  "carpetaMedia": ""
+}

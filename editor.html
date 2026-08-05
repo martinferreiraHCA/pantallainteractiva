@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Editor · Trivia HCA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito+Sans:opsz,wght@6..12,400;6..12,600;6..12,700;6..12,800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* ============ PALETA HCA (misma del player, en clave clara) ============ */
+:root{
+  --azul-noche:#081a38;
+  --azul-hca:#12448f;
+  --azul-medio:#1c5cb8;
+  --celeste:#4fc3f7;
+  --celeste-suave:#e3f4fd;
+  --dorado:#ffc533;
+  --coral:#ff5d5d;
+  --papel:#f4f7fc;
+  --blanco:#ffffff;
+  --borde:#d7e1f0;
+  --tinta:#14243f;
+  --tinta-suave:#5a6b85;
+  --f-display:'Baloo 2',system-ui,sans-serif;
+  --f-body:'Nunito Sans',system-ui,sans-serif;
+  --radio:14px;
+  --sombra:0 6px 24px rgba(8,26,56,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--f-body);background:var(--papel);color:var(--tinta);
+  min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:15px;color:var(--tinta);
+  background:var(--blanco);border:1.5px solid var(--borde);border-radius:10px;
+  padding:9px 12px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--celeste);
+  outline-offset:1px;border-color:var(--celeste)}
+textarea{resize:vertical;min-height:70px}
+label{font-weight:700;font-size:13px;color:var(--tinta-suave);
+  display:block;margin-bottom:5px;letter-spacing:.02em}
+
+/* ---------- Cabecera ---------- */
+header{background:var(--azul-noche);color:#fff;padding:14px 26px;
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  position:sticky;top:0;z-index:20}
+header .titulo{font-family:var(--f-display);font-weight:800;font-size:22px}
+header .titulo b{color:var(--dorado)}
+header .acciones{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.aviso-borrador{font-size:13px;background:rgba(255,197,51,.18);
+  border:1px solid rgba(255,197,51,.6);color:var(--dorado);
+  padding:5px 12px;border-radius:999px;display:none}
+
+.btn{border:none;border-radius:10px;padding:10px 16px;font-weight:800;
+  font-size:14px;transition:transform .12s, box-shadow .12s}
+.btn:hover{transform:translateY(-1px)}
+.btn:active{transform:translateY(0)}
+.btn-primario{background:var(--dorado);color:var(--azul-noche)}
+.btn-secundario{background:var(--azul-medio);color:#fff}
+.btn-fantasma{background:transparent;color:var(--azul-medio);
+  border:1.5px solid var(--azul-medio)}
+.btn-peligro{background:transparent;color:var(--coral);
+  border:1.5px solid var(--coral)}
+.btn-mini{padding:6px 11px;font-size:13px}
+
+/* ---------- Pestañas ---------- */
+nav.pestanas{display:flex;gap:6px;padding:14px 26px 0;max-width:1280px;
+  margin:0 auto}
+nav.pestanas button{background:transparent;border:none;
+  font-family:var(--f-display);font-weight:700;font-size:16px;
+  color:var(--tinta-suave);padding:10px 18px;border-radius:12px 12px 0 0;
+  border-bottom:3px solid transparent}
+nav.pestanas button.activa{color:var(--azul-hca);
+  border-bottom-color:var(--dorado);background:var(--blanco)}
+main{max-width:1280px;margin:0 auto;padding:20px 26px 60px}
+.pestana{display:none}
+.pestana.activa{display:block}
+
+/* ---------- Pestaña PREGUNTAS ---------- */
+.dos-columnas{display:grid;grid-template-columns:380px 1fr;gap:22px;
+  align-items:start}
+.panel{background:var(--blanco);border:1px solid var(--borde);
+  border-radius:var(--radio);box-shadow:var(--sombra)}
+.panel-lista{display:flex;flex-direction:column;max-height:calc(100vh - 210px);
+  position:sticky;top:86px}
+.panel-lista .filtros{padding:14px;display:grid;gap:8px;
+  border-bottom:1px solid var(--borde)}
+.lista-preguntas{overflow-y:auto;flex:1;padding:8px}
+.item-pregunta{padding:10px 12px;border-radius:10px;cursor:pointer;
+  display:grid;gap:4px;border:1.5px solid transparent}
+.item-pregunta:hover{background:var(--celeste-suave)}
+.item-pregunta.activo{border-color:var(--celeste);background:var(--celeste-suave)}
+.item-pregunta .arriba{display:flex;gap:8px;align-items:center;font-size:12px}
+.item-pregunta .arriba .id{font-family:var(--f-display);font-weight:700;
+  color:var(--tinta-suave)}
+.chip{background:var(--azul-hca);color:#fff;font-weight:700;font-size:11px;
+  padding:2px 9px;border-radius:999px;letter-spacing:.03em}
+.chip.media{background:var(--celeste);color:var(--azul-noche)}
+.chip.inactiva{background:var(--borde);color:var(--tinta-suave)}
+.item-pregunta .texto{font-size:14px;line-height:1.3;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden}
+.lista-vacia{padding:26px 18px;text-align:center;color:var(--tinta-suave);
+  font-size:14px}
+
+.panel-form{padding:20px;display:grid;gap:16px}
+.fila{display:grid;gap:14px}
+.fila.dos{grid-template-columns:1fr 1fr}
+.fila.opciones{grid-template-columns:1fr 1fr}
+.campo-opcion{display:grid;gap:5px}
+.campo-opcion .cabeza{display:flex;justify-content:space-between;
+  align-items:center}
+.campo-opcion .cabeza label{margin:0}
+.marca-correcta{display:flex;gap:6px;align-items:center;font-size:12px;
+  font-weight:700;color:var(--tinta-suave);cursor:pointer}
+.marca-correcta input{width:auto}
+.campo-opcion.es-correcta input[type=text]{border-color:var(--dorado);
+  background:#fff9e8}
+
+.zona-media{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.tarjeta-media{border:1.5px dashed var(--borde);border-radius:12px;
+  padding:12px;display:grid;gap:8px}
+.tarjeta-media .previa{background:var(--papel);border-radius:8px;
+  min-height:110px;display:grid;place-items:center;overflow:hidden}
+.tarjeta-media .previa img,.tarjeta-media .previa video{max-width:100%;
+  max-height:150px;display:block}
+.tarjeta-media .previa .nada{color:var(--tinta-suave);font-size:13px}
+.tarjeta-media .pie{display:flex;gap:8px;align-items:center}
+.tarjeta-media .pie input[type=text]{font-size:13px}
+input[type=file]{display:none}
+.btn-archivo{display:inline-block;text-align:center}
+
+.acciones-form{display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+  border-top:1px solid var(--borde);padding-top:16px}
+.acciones-form .empuja{margin-left:auto}
+.nota{font-size:13px;color:var(--tinta-suave)}
+
+/* Vista previa estilo pantalla */
+.previa-pantalla{background:var(--azul-noche);border-radius:16px;padding:26px;
+  color:#f6f9ff;display:grid;gap:16px}
+.previa-pantalla .cat{font-family:var(--f-display);font-size:12px;
+  letter-spacing:.25em;color:var(--celeste);font-weight:700}
+.previa-pantalla .q{font-family:var(--f-display);font-weight:800;
+  font-size:24px;line-height:1.2}
+.previa-pantalla .ops{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.previa-pantalla .op{display:flex;gap:10px;align-items:center;
+  background:rgba(255,255,255,.07);border:1.5px solid rgba(255,255,255,.16);
+  border-radius:12px;padding:10px 12px;font-size:14px}
+.previa-pantalla .op .l{font-family:var(--f-display);font-weight:800;
+  background:rgba(79,195,247,.2);color:var(--celeste);border-radius:8px;
+  width:28px;height:28px;display:grid;place-items:center;flex:none}
+.previa-pantalla .op.ok{background:var(--dorado);border-color:var(--dorado);
+  color:var(--azul-noche);font-weight:800}
+.previa-pantalla .op.ok .l{background:var(--azul-noche);color:var(--dorado)}
+.previa-pantalla .media img,.previa-pantalla .media video{max-width:100%;
+  max-height:180px;border-radius:10px;border:2px solid rgba(79,195,247,.5)}
+
+/* ---------- Pestaña CALENDARIO ---------- */
+.cal-layout{display:grid;grid-template-columns:1fr 340px;gap:22px;
+  align-items:start}
+.cal-cabecera{display:flex;align-items:center;justify-content:space-between;
+  padding:16px 18px;border-bottom:1px solid var(--borde)}
+.cal-cabecera h2{font-family:var(--f-display);font-size:20px;
+  color:var(--azul-hca);text-transform:capitalize}
+.cal-grilla{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;
+  padding:14px}
+.cal-diasem{font-size:11px;font-weight:800;color:var(--tinta-suave);
+  text-align:center;letter-spacing:.08em;padding:4px 0}
+.cal-dia{min-height:78px;border:1.5px solid var(--borde);border-radius:10px;
+  padding:6px;cursor:pointer;display:grid;gap:4px;align-content:start;
+  background:var(--blanco);transition:border-color .15s, background .15s}
+.cal-dia:hover{border-color:var(--celeste)}
+.cal-dia.fuera{opacity:.35;pointer-events:none;background:var(--papel)}
+.cal-dia.hoy .n{background:var(--dorado);color:var(--azul-noche)}
+.cal-dia.elegido{border-color:var(--azul-medio);
+  box-shadow:0 0 0 2px rgba(28,92,184,.25)}
+.cal-dia .n{font-family:var(--f-display);font-weight:700;font-size:13px;
+  width:24px;height:24px;display:grid;place-items:center;border-radius:8px}
+.cal-dia .asig{font-size:10.5px;font-weight:800;background:var(--azul-hca);
+  color:#fff;border-radius:6px;padding:2px 6px;line-height:1.25;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-dia .asig.porids{background:var(--celeste);color:var(--azul-noche)}
+.panel-dia{padding:18px;display:grid;gap:14px;position:sticky;top:86px}
+.panel-dia h3{font-family:var(--f-display);color:var(--azul-hca);
+  font-size:17px;text-transform:capitalize}
+.radio-linea{display:flex;gap:8px;align-items:center;font-size:14px;
+  font-weight:600}
+.radio-linea input{width:auto}
+.lista-ids{max-height:230px;overflow-y:auto;border:1.5px solid var(--borde);
+  border-radius:10px;padding:8px;display:grid;gap:4px}
+.lista-ids label{display:flex;gap:8px;align-items:flex-start;font-weight:600;
+  font-size:13px;color:var(--tinta);margin:0;cursor:pointer;
+  padding:4px 6px;border-radius:6px}
+.lista-ids label:hover{background:var(--celeste-suave)}
+.lista-ids input{width:auto;margin-top:2px}
+.oculto{display:none!important}
+
+/* ---------- Pestaña DATOS ---------- */
+.tarjetas-datos{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+  gap:18px}
+.tarjeta-dato{padding:20px;display:grid;gap:12px;align-content:start}
+.tarjeta-dato h3{font-family:var(--f-display);color:var(--azul-hca);
+  font-size:18px}
+.tarjeta-dato p{font-size:14px;color:var(--tinta-suave);line-height:1.45}
+.paso{display:flex;gap:10px;font-size:14px;line-height:1.4}
+.paso b{font-family:var(--f-display);color:var(--dorado);
+  background:var(--azul-noche);border-radius:8px;width:26px;height:26px;
+  display:grid;place-items:center;flex:none}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,80px);
+  background:var(--azul-noche);color:#fff;font-weight:700;font-size:14px;
+  padding:12px 22px;border-radius:999px;box-shadow:var(--sombra);
+  transition:transform .35s;z-index:50}
+.toast.visible{transform:translate(-50%,0)}
+
+@media (max-width:960px){
+  .dos-columnas,.cal-layout{grid-template-columns:1fr}
+  .panel-lista{position:static;max-height:340px}
+  .fila.dos,.fila.opciones,.zona-media{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="titulo">Editor · TRIVIA <b>HCA</b></div>
+  <div class="acciones">
+    <span class="aviso-borrador" id="avisoBorrador">Borrador local restaurado</span>
+    <a class="btn btn-fantasma btn-mini" href="index.html" target="_blank"
+       style="text-decoration:none;color:var(--celeste);border-color:var(--celeste)">Ver pantalla ↗</a>
+    <button class="btn btn-primario" onclick="publicarEnDrive()">⬆ Publicar en Drive</button>
+    <button class="btn btn-fantasma" onclick="exportarZIP()">ZIP (respaldo)</button>
+  </div>
+</header>
+
+<nav class="pestanas">
+  <button class="activa" data-p="preguntas" onclick="irPestana('preguntas')">Preguntas</button>
+  <button data-p="calendario" onclick="irPestana('calendario')">Calendario</button>
+  <button data-p="pantalla" onclick="irPestana('pantalla')">Pantalla</button>
+  <button data-p="datos" onclick="irPestana('datos')">Importar / Exportar</button>
+</nav>
+
+<main>
+<!-- ==================== PREGUNTAS ==================== -->
+<section class="pestana activa" id="p-preguntas">
+  <div class="dos-columnas">
+
+    <div class="panel panel-lista">
+      <div class="filtros">
+        <input type="search" id="buscador" placeholder="Buscar pregunta…" oninput="pintarLista()">
+        <select id="filtroCategoria" onchange="pintarLista()">
+          <option value="">Todas las categorías</option>
+        </select>
+        <button class="btn btn-secundario" onclick="nuevaPregunta()">＋ Nueva pregunta</button>
+      </div>
+      <div class="lista-preguntas" id="listaPreguntas"></div>
+    </div>
+
+    <div style="display:grid;gap:22px">
+      <div class="panel panel-form">
+        <div class="fila dos">
+          <div>
+            <label>Categoría</label>
+            <input id="fCategoria" list="listaCategorias" placeholder="Física, Astronomía…">
+            <datalist id="listaCategorias"></datalist>
+          </div>
+          <div style="display:flex;align-items:end;gap:16px">
+            <div style="flex:1">
+              <label>ID</label>
+              <input id="fId" disabled>
+            </div>
+            <label class="marca-correcta" style="margin-bottom:10px">
+              <input type="checkbox" id="fActiva" checked> Activa
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label>Pregunta</label>
+          <textarea id="fPregunta" placeholder="¿…?"></textarea>
+        </div>
+
+        <div class="fila opciones" id="camposOpciones">
+          <!-- A–D generado por JS -->
+        </div>
+
+        <div>
+          <label>Explicación / dato curioso (se muestra con la respuesta)</label>
+          <textarea id="fExplicacion" placeholder="¿Sabías que…?"></textarea>
+        </div>
+
+        <div class="zona-media">
+          <div class="tarjeta-media" id="tmImagen">
+            <label>Imagen</label>
+            <div class="previa" id="previaImagen"><span class="nada">Sin imagen</span></div>
+            <div class="pie">
+              <label class="btn btn-fantasma btn-mini btn-archivo">Elegir archivo
+                <input type="file" id="archivoImagen" accept="image/*"></label>
+              <input type="text" id="fImagen" list="dlDrive" placeholder="foto.jpg o link de Drive"
+                     oninput="previsualizarMedia()">
+              <button class="btn btn-peligro btn-mini" onclick="quitarMedia('imagen')">✕</button>
+            </div>
+          </div>
+          <div class="tarjeta-media" id="tmVideo">
+            <label>Video (mp4, corto y sin audio)</label>
+            <div class="previa" id="previaVideo"><span class="nada">Sin video</span></div>
+            <div class="pie">
+              <label class="btn btn-fantasma btn-mini btn-archivo">Elegir archivo
+                <input type="file" id="archivoVideo" accept="video/mp4,video/webm"></label>
+              <input type="text" id="fVideo" list="dlDrive" placeholder="video.mp4 o link de Drive"
+                     oninput="previsualizarMedia()">
+              <button class="btn btn-peligro btn-mini" onclick="quitarMedia('video')">✕</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="acciones-form">
+          <button class="btn btn-primario" onclick="guardarPregunta()">Guardar pregunta</button>
+          <button class="btn btn-fantasma" onclick="duplicarPregunta()">Duplicar</button>
+          <button class="btn btn-peligro" onclick="eliminarPregunta()">Eliminar</button>
+          <span class="nota empuja" id="notaMedia"></span>
+        </div>
+      </div>
+
+      <div class="panel" style="padding:16px">
+        <label style="margin-bottom:10px">Vista previa en pantalla</label>
+        <div class="previa-pantalla" id="previaPantalla"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ==================== CALENDARIO ==================== -->
+<section class="pestana" id="p-calendario">
+  <div class="cal-layout">
+    <div class="panel">
+      <div class="cal-cabecera">
+        <button class="btn btn-fantasma btn-mini" onclick="moverMes(-1)">←</button>
+        <h2 id="tituloMes"></h2>
+        <button class="btn btn-fantasma btn-mini" onclick="moverMes(1)">→</button>
+      </div>
+      <div class="cal-grilla" id="grillaCal"></div>
+      <p class="nota" style="padding:0 18px 16px">Los días sin asignación rotan
+        <b>todas</b> las preguntas activas. Hacé clic en un día para asignarle
+        una categoría o preguntas puntuales.</p>
+    </div>
+
+    <div class="panel panel-dia" id="panelDia">
+      <h3 id="tituloDia">Elegí un día</h3>
+      <div id="controlesDia" class="oculto">
+        <div style="display:grid;gap:8px">
+          <label class="radio-linea"><input type="radio" name="modoDia" value="nada"
+            onchange="cambioModoDia()"> Sin asignación (todas)</label>
+          <label class="radio-linea"><input type="radio" name="modoDia" value="categoria"
+            onchange="cambioModoDia()"> Una categoría</label>
+          <label class="radio-linea"><input type="radio" name="modoDia" value="ids"
+            onchange="cambioModoDia()"> Preguntas específicas</label>
+        </div>
+        <div id="cajaCatDia" class="oculto" style="margin-top:10px">
+          <select id="selCatDia"></select>
+        </div>
+        <div id="cajaIdsDia" class="oculto" style="margin-top:10px;display:grid;gap:8px">
+          <input type="search" id="buscaIdsDia" placeholder="Filtrar…" oninput="pintarListaIdsDia()">
+          <div class="lista-ids" id="listaIdsDia"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:14px">
+          <button class="btn btn-primario btn-mini" onclick="guardarDia()">Guardar día</button>
+          <button class="btn btn-peligro btn-mini" onclick="limpiarDia()">Quitar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ==================== PANTALLA (temática + pausas) ==================== -->
+<section class="pestana" id="p-pantalla">
+  <div class="dos-columnas">
+
+    <div class="panel">
+      <h3 style="margin-bottom:14px">Temática del evento</h3>
+      <p class="nota" style="margin-bottom:16px">Es el título grande que aparece en la
+      portada y en los interludios. Cambialo cuando arranque otro mes o actividad.</p>
+      <div class="fila dos">
+        <div><label>Línea chica de arriba</label>
+          <input id="evKicker" placeholder="MES DE LA" oninput="tocarEvento()"></div>
+        <div><label>Cierre (cápsula)</label>
+          <input id="evPie" placeholder="EN EL HCA" oninput="tocarEvento()"></div>
+      </div>
+      <div class="fila tres" style="grid-template-columns:1.2fr .6fr 1.2fr">
+        <div><label>Palabra 1 (dorado)</label>
+          <input id="evL1" placeholder="CIENCIA" oninput="tocarEvento()"></div>
+        <div><label>Conector</label>
+          <input id="evY" placeholder="y la" oninput="tocarEvento()"></div>
+        <div><label>Palabra 2 (celeste)</label>
+          <input id="evL2" placeholder="TECNOLOGÍA" oninput="tocarEvento()"></div>
+      </div>
+      <div id="previaEvento" style="margin-top:18px;border-radius:16px;padding:26px 18px;
+        text-align:center;background:radial-gradient(circle at 50% 30%,#1c2354,#0b0f24);
+        display:grid;gap:10px;justify-items:center">
+        <div id="pvKicker" style="color:#4fc3f7;font-family:'Baloo 2';font-weight:700;
+          letter-spacing:.4em;font-size:13px"></div>
+        <div style="font-family:'Baloo 2';font-weight:800;font-size:34px;line-height:1.1">
+          <b id="pvL1" style="color:#ffc533"></b>
+          <span id="pvY" style="color:#f6f9ff;font-size:16px;font-weight:700;margin:0 4px"></span>
+          <b id="pvL2" style="color:#4fc3f7"></b>
+        </div>
+        <div id="pvPie" style="color:#f6f9ff;font-family:'Baloo 2';font-weight:800;
+          font-size:12px;letter-spacing:.25em;border:1.5px solid rgba(255,197,51,.6);
+          border-radius:999px;padding:6px 16px"></div>
+      </div>
+      <p class="nota" style="margin-top:12px">Ejemplos: «SEMANA DE LA / MATEMÁTICA», «MES DEL /
+      LIBRO / EN EL HCA». Si dejás un campo vacío, esa parte no se muestra.</p>
+    </div>
+
+    <div class="panel">
+      <h3 style="margin-bottom:6px">Pausas entre preguntas</h3>
+      <p class="nota" style="margin-bottom:14px">Como en las pantallas de los ómnibus:
+      cada tanto se corta el juego y aparece la portada, un video promocional o una
+      plaqueta de comunicación. Rotan en orden.</p>
+      <div class="fila dos" style="align-items:end">
+        <div><label>Mostrar una pausa cada … preguntas</label>
+          <input type="number" id="pausasCada" min="0" max="50" value="8"
+            oninput="config.pausas.cada=Math.max(0,+this.value||0);guardarBorrador()"></div>
+        <p class="nota" style="margin:0 0 10px">0 = juego corrido, sin pausas.</p>
+      </div>
+      <div id="listaPausas" style="display:grid;gap:12px;margin:14px 0"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secundario" onclick="agregarPausa('splash')">＋ Portada</button>
+        <button class="btn btn-secundario" onclick="agregarPausa('plaqueta')">＋ Plaqueta</button>
+        <button class="btn btn-secundario" onclick="agregarPausa('video')">＋ Video</button>
+      </div>
+      <p class="nota" style="margin-top:12px">Los videos van <b>sin audio</b> (las TVs en
+      kiosco reproducen mudo). Formato recomendado: MP4 H.264, liviano.</p>
+    </div>
+
+
+  <div class="panel" style="margin-top:22px">
+    <h3 style="margin-bottom:6px">Carpeta de media en Google Drive</h3>
+    <p class="nota" style="margin-bottom:14px">Colgás fotos y videos en una carpeta
+    compartida de Drive y en las preguntas ponés <b>solo el nombre del archivo</b>
+    (ej. <code>pendulo.jpg</code>). Las pantallas revisan la carpeta cada 5 minutos
+    y toman lo nuevo solas. Requiere un mini Apps Script que lista la carpeta —
+    el paso a paso (2 minutos) está en el README.<br><br>
+    <b>Las preguntas también pueden vivir ahí</b>: una Google Sheet llamada
+    <code>preguntas</code> (o un <code>preguntas.csv</code>) en la carpeta manda
+    sobre el repo — editás la planilla y en ≤5 min está en todas las pantallas.
+    Lo mismo vale para <code>calendario.json</code> y <code>config.json</code>.</p>
+    <div class="fila dos" style="align-items:end">
+      <div><label>URL del Apps Script (termina en <code>/exec</code>)</label>
+        <input id="cfgCarpeta" placeholder="https://script.google.com/macros/s/…/exec"
+          oninput="config.carpetaMedia=this.value.trim();guardarBorrador()"></div>
+      <button class="btn btn-secundario" onclick="probarCarpeta(true)">Probar conexión</button>
+    </div>
+    <div class="fila dos" style="align-items:end;margin-top:10px">
+      <div><label>Clave de edición (la del script, línea <code>CLAVE</code>)</label>
+        <input type="password" id="cfgClave" placeholder="solo queda en este navegador"
+          oninput="guardarClave(this.value)"></div>
+      <button class="btn btn-secundario" onclick="publicarEnDrive()">⬆ Publicar ahora</button>
+    </div>
+    <p class="nota" id="estadoCarpeta" style="margin-top:10px"></p>
+  </div>
+
+  </div>
+</section>
+
+<datalist id="dlDrive"></datalist>
+
+<!-- ==================== DATOS ==================== -->
+<section class="pestana" id="p-datos">
+  <div class="tarjetas-datos">
+
+    <div class="panel tarjeta-dato">
+      <h3>Importar</h3>
+      <p>Traé un banco de preguntas existente. El CSV tiene que respetar las
+      columnas del README.</p>
+      <label class="btn btn-secundario btn-archivo">Importar CSV (reemplaza todo)
+        <input type="file" id="impCSVReemplaza" accept=".csv,text/csv"></label>
+      <label class="btn btn-fantasma btn-archivo">Importar CSV (agrega al final)
+        <input type="file" id="impCSVAgrega" accept=".csv,text/csv"></label>
+      <label class="btn btn-fantasma btn-archivo">Importar calendario.json
+        <input type="file" id="impJSON" accept=".json,application/json"></label>
+      <label class="btn btn-fantasma btn-archivo">Importar config.json (temática y pausas)
+        <input type="file" id="impConfig" accept=".json,application/json"></label>
+      <button class="btn btn-fantasma" onclick="traerDelSitio()">Traer datos del sitio publicado</button>
+    </div>
+
+    <div class="panel tarjeta-dato">
+      <h3>Exportar</h3>
+      <p>Descargá los archivos y subilos al repositorio de GitHub. El paquete
+      Con la base en Drive, publicás directo con <b>⬆ Publicar</b>. El ZIP queda
+      como respaldo o para la instalación inicial del sitio.</p>
+      <button class="btn btn-primario" onclick="exportarZIP()">⬇ Paquete completo (ZIP)</button>
+      <button class="btn btn-fantasma" onclick="exportarCSV()">Solo preguntas.csv</button>
+      <button class="btn btn-fantasma" onclick="exportarJSON()">Solo calendario.json</button>
+      <button class="btn btn-fantasma" onclick="exportarConfig()">Solo config.json</button>
+      <p class="nota" id="resumenExport"></p>
+    </div>
+
+    <div class="panel tarjeta-dato">
+      <h3>Flujo con GitHub Pages</h3>
+      <div class="paso"><b>1</b><span>Editá preguntas y calendario acá.</span></div>
+      <div class="paso"><b>2</b><span>Exportá el <b>paquete ZIP</b> y descomprimilo
+        en la raíz del repositorio (pisa los archivos de datos y suma las
+        imágenes y videos nuevos — todo va junto, sin carpetas).</span></div>
+      <div class="paso"><b>3</b><span>Hacé commit y push. En un par de minutos la
+        pantalla toma los cambios sola (recarga los datos al reiniciar la página).</span></div>
+      <p class="nota">El borrador también queda guardado en este navegador por si
+      cerrás la pestaña antes de exportar.</p>
+    </div>
+
+  </div>
+</section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =====================================================================
+   ESTADO
+   ===================================================================== */
+const COLS = ['id','categoria','pregunta','opcion_a','opcion_b','opcion_c',
+              'opcion_d','correcta','explicacion','imagen','video','activa'];
+let preguntas = [];
+let calendario = {default:{modo:'todas'}, dias:{}};
+let idSeleccionado = null;
+let correctaElegida = 'A';
+const mediaNuevos = new Map();      // nombreRelativo -> File
+let config = {
+  evento:{kicker:'MES DE LA', linea1:'CIENCIA', conector:'y la',
+          linea2:'TECNOLOGÍA', pie:'EN EL HCA'},
+  pausas:{cada:8, items:[{tipo:'splash', duracion:6}]},
+  carpetaMedia:''
+};
+let mesVisto = new Date();
+let diaElegidoISO = null;
+
+const $ = id => document.getElementById(id);
+
+/* =====================================================================
+   UTILIDADES
+   ===================================================================== */
+function avisar(msj){
+  const t=$('toast'); t.textContent=msj; t.classList.add('visible');
+  clearTimeout(t._tmr); t._tmr=setTimeout(()=>t.classList.remove('visible'),2600);
+}
+function escapar(s){const d=document.createElement('span');d.textContent=s??'';
+  return d.innerHTML;}
+function normalizarNombre(nombre){
+  return nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,'-').replace(/[^a-z0-9.\-_]/g,'');
+}
+function proximoId(){
+  const nums=preguntas.map(p=>parseInt(p.id,10)).filter(n=>!isNaN(n));
+  return String(nums.length?Math.max(...nums)+1:1);
+}
+function categoriasUnicas(){
+  return [...new Set(preguntas.map(p=>p.categoria).filter(Boolean))].sort();
+}
+
+/* ---------- CSV ---------- */
+function parseCSV(texto){
+  texto = texto.replace(/^\uFEFF/,'');
+  const filas=[]; let fila=[], celda='', dentro=false;
+  for(let i=0;i<texto.length;i++){
+    const c=texto[i];
+    if(dentro){
+      if(c==='"'){ if(texto[i+1]==='"'){celda+='"';i++;} else dentro=false; }
+      else celda+=c;
+    } else if(c==='"') dentro=true;
+    else if(c===','){fila.push(celda);celda='';}
+    else if(c==='\n'||c==='\r'){
+      if(c==='\r'&&texto[i+1]==='\n')i++;
+      fila.push(celda);celda='';
+      if(fila.some(v=>v.trim()!=='')) filas.push(fila);
+      fila=[];
+    } else celda+=c;
+  }
+  fila.push(celda);
+  if(fila.some(v=>v.trim()!=='')) filas.push(fila);
+  if(!filas.length) return [];
+  const cab=filas[0].map(h=>h.trim().toLowerCase());
+  return filas.slice(1).map(f=>{
+    const o={}; COLS.forEach(cl=>o[cl]='');
+    cab.forEach((h,i)=>{ if(COLS.includes(h)) o[h]=(f[i]??'').trim(); });
+    return o;
+  });
+}
+function celdaCSV(v){
+  v = String(v??'');
+  return /[",\n\r]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v;
+}
+function aCSV(){
+  const lineas=[COLS.join(',')];
+  preguntas.forEach(p=>lineas.push(COLS.map(c=>celdaCSV(p[c])).join(',')));
+  return lineas.join('\n');
+}
+
+/* ---------- Descargas ---------- */
+function descargar(nombre, contenido, tipo){
+  const blob = contenido instanceof Blob ? contenido
+             : new Blob([contenido],{type:tipo||'text/plain;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=nombre; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+
+/* =====================================================================
+   PESTAÑAS
+   ===================================================================== */
+function irPestana(nombre){
+  document.querySelectorAll('.pestana').forEach(s=>s.classList.remove('activa'));
+  document.querySelectorAll('nav.pestanas button').forEach(b=>
+    b.classList.toggle('activa', b.dataset.p===nombre));
+  $('p-'+nombre).classList.add('activa');
+  if(nombre==='calendario') pintarCalendario();
+  if(nombre==='datos') pintarResumenExport();
+}
+
+/* =====================================================================
+   PREGUNTAS — lista y formulario
+   ===================================================================== */
+function pintarLista(){
+  const busca=($('buscador').value||'').toLowerCase();
+  const cat=$('filtroCategoria').value;
+  const cont=$('listaPreguntas'); cont.innerHTML='';
+  const visibles = preguntas.filter(p=>
+    (!cat || p.categoria===cat) &&
+    (!busca || (p.pregunta+' '+p.categoria).toLowerCase().includes(busca)));
+  if(!visibles.length){
+    cont.innerHTML='<div class="lista-vacia">No hay preguntas todavía.<br>Creá la primera con «＋ Nueva pregunta».</div>';
+  }
+  visibles.forEach(p=>{
+    const d=document.createElement('div');
+    d.className='item-pregunta'+(p.id===idSeleccionado?' activo':'');
+    d.onclick=()=>cargarEnFormulario(p.id);
+    const conMedia = p.imagen||p.video;
+    d.innerHTML=`<div class="arriba">
+        <span class="id">#${escapar(p.id)}</span>
+        ${p.categoria?`<span class="chip">${escapar(p.categoria)}</span>`:''}
+        ${conMedia?'<span class="chip media">media</span>':''}
+        ${p.activa==='0'?'<span class="chip inactiva">inactiva</span>':''}
+      </div>
+      <div class="texto">${escapar(p.pregunta)||'<i>(sin texto)</i>'}</div>`;
+    cont.appendChild(d);
+  });
+  // refrescar selects de categoría
+  const cats=categoriasUnicas();
+  $('listaCategorias').innerHTML=cats.map(c=>`<option value="${escapar(c)}">`).join('');
+  const sel=$('filtroCategoria'); const actual=sel.value;
+  sel.innerHTML='<option value="">Todas las categorías</option>'+
+    cats.map(c=>`<option ${c===actual?'selected':''}>${escapar(c)}</option>`).join('');
+}
+
+function armarCamposOpciones(){
+  const cont=$('camposOpciones'); cont.innerHTML='';
+  ['A','B','C','D'].forEach(L=>{
+    const d=document.createElement('div');
+    d.className='campo-opcion'; d.id='co'+L;
+    d.innerHTML=`<div class="cabeza"><label>Opción ${L}${'AB'.includes(L)?'':' (opcional)'}</label>
+      <label class="marca-correcta"><input type="radio" name="correcta" value="${L}"
+        onchange="marcarCorrecta('${L}')"> Correcta</label></div>
+      <input type="text" id="fOpcion${L}" oninput="refrescarPrevia()">`;
+    cont.appendChild(d);
+  });
+}
+function marcarCorrecta(L){
+  correctaElegida=L;
+  ['A','B','C','D'].forEach(x=>$('co'+x).classList.toggle('es-correcta',x===L));
+  refrescarPrevia();
+}
+
+function limpiarFormulario(){
+  idSeleccionado=null;
+  $('fId').value='(nueva)';
+  $('fCategoria').value=''; $('fPregunta').value='';
+  ['A','B','C','D'].forEach(L=>$('fOpcion'+L).value='');
+  $('fExplicacion').value=''; $('fImagen').value=''; $('fVideo').value='';
+  $('fActiva').checked=true;
+  document.querySelector('input[name=correcta][value=A]').checked=true;
+  marcarCorrecta('A');
+  previsualizarMedia(); refrescarPrevia();
+}
+function nuevaPregunta(){ limpiarFormulario(); pintarLista(); $('fCategoria').focus(); }
+
+function cargarEnFormulario(id){
+  const p=preguntas.find(x=>x.id===id); if(!p) return;
+  idSeleccionado=id;
+  $('fId').value=p.id;
+  $('fCategoria').value=p.categoria||'';
+  $('fPregunta').value=p.pregunta||'';
+  ['A','B','C','D'].forEach(L=>$('fOpcion'+L).value=p['opcion_'+L.toLowerCase()]||'');
+  $('fExplicacion').value=p.explicacion||'';
+  $('fImagen').value=p.imagen||''; $('fVideo').value=p.video||'';
+  $('fActiva').checked=p.activa!=='0';
+  const L=(p.correcta||'A').toUpperCase();
+  (document.querySelector(`input[name=correcta][value=${L}]`)
+    ||document.querySelector('input[name=correcta][value=A]')).checked=true;
+  marcarCorrecta('ABCD'.includes(L)?L:'A');
+  previsualizarMedia(); refrescarPrevia(); pintarLista();
+}
+
+function leerFormulario(){
+  return {
+    id: idSeleccionado ?? proximoId(),
+    categoria:$('fCategoria').value.trim(),
+    pregunta:$('fPregunta').value.trim(),
+    opcion_a:$('fOpcionA').value.trim(),
+    opcion_b:$('fOpcionB').value.trim(),
+    opcion_c:$('fOpcionC').value.trim(),
+    opcion_d:$('fOpcionD').value.trim(),
+    correcta:correctaElegida,
+    explicacion:$('fExplicacion').value.trim(),
+    imagen:$('fImagen').value.trim(),
+    video:$('fVideo').value.trim(),
+    activa:$('fActiva').checked?'1':'0'
+  };
+}
+function guardarPregunta(){
+  const p=leerFormulario();
+  if(!p.pregunta) return avisar('Escribí el texto de la pregunta');
+  if(!p.opcion_a||!p.opcion_b) return avisar('Cargá al menos las opciones A y B');
+  if(!p['opcion_'+p.correcta.toLowerCase()])
+    return avisar('La opción marcada como correcta está vacía');
+  const i=preguntas.findIndex(x=>x.id===p.id);
+  if(i>=0) preguntas[i]=p; else preguntas.push(p);
+  idSeleccionado=p.id; $('fId').value=p.id;
+  pintarLista(); guardarBorrador(); avisar('Pregunta guardada ✓');
+}
+function duplicarPregunta(){
+  const p=leerFormulario(); p.id=proximoId();
+  preguntas.push(p); idSeleccionado=p.id;
+  cargarEnFormulario(p.id); guardarBorrador(); avisar('Duplicada como #'+p.id);
+}
+function eliminarPregunta(){
+  if(!idSeleccionado) return avisar('No hay ninguna pregunta seleccionada');
+  if(!confirm('¿Eliminar la pregunta #'+idSeleccionado+'?')) return;
+  preguntas=preguntas.filter(x=>x.id!==idSeleccionado);
+  limpiarFormulario(); pintarLista(); guardarBorrador(); avisar('Eliminada');
+}
+
+/* ---------- Media ---------- */
+/* ---------------- Multimedia desde Google Drive ----------------
+   Se puede pegar el link de Drive tal cual (Compartir → cualquiera con el
+   enlace). Acá se convierte a una URL directa que la vista previa puede mostrar. */
+function idDrive(u){
+  const m=String(u).match(/\/d\/([-\w]{20,})/) || String(u).match(/[?&]id=([-\w]{20,})/);
+  return m ? m[1] : null;
+}
+let MAPA_MEDIA={};   // nombre → id (carpeta de media en Drive)
+function urlDrive(id, tipo){
+  return tipo==='video'
+    ? 'https://drive.google.com/uc?export=download&id='+id
+    : 'https://drive.google.com/thumbnail?id='+id+'&sz=w1920';
+}
+function resolverMedia(ruta, tipo){
+  if(!ruta) return ruta;
+  ruta=String(ruta).trim();
+  if(/drive\.google\.com|docs\.google\.com/.test(ruta)){
+    const id=idDrive(ruta);
+    if(id) return urlDrive(id, tipo);
+  }
+  if(!/[\/:]/.test(ruta)){
+    let id=MAPA_MEDIA[ruta];
+    if(!id){
+      const clave=Object.keys(MAPA_MEDIA)
+        .find(n=>n.toLowerCase()===ruta.toLowerCase());
+      if(clave) id=MAPA_MEDIA[clave];
+    }
+    if(id) return urlDrive(id, tipo);
+  }
+  return ruta;
+}
+
+
+function conectarArchivo(inputId, campoId, prefijoTipo){
+  $(inputId).addEventListener('change', ev=>{
+    const f=ev.target.files[0]; if(!f) return;
+    ev.target.value='';
+    incorporarArchivo(f, nombre=>{
+      $(campoId).value=nombre;
+      previsualizarMedia();
+    });
+  });
+}
+function fuenteMedia(ruta,tipo){
+  if(mediaNuevos.has(ruta)) return URL.createObjectURL(mediaNuevos.get(ruta));
+  return resolverMedia(ruta,tipo); // repo o link de Google Drive
+}
+function previsualizarMedia(){
+  const img=$('fImagen').value.trim(), vid=$('fVideo').value.trim();
+  $('previaImagen').innerHTML = img
+    ? `<img src="${escapar(fuenteMedia(img,"imagen"))}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'nada',textContent:'No encuentro el archivo (se verá al publicar)'}))">`
+    : '<span class="nada">Sin imagen</span>';
+  $('previaVideo').innerHTML = vid
+    ? `<video src="${escapar(fuenteMedia(vid,"video"))}" muted loop autoplay playsinline onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'nada',textContent:'No encuentro el archivo (se verá al publicar)'}))"></video>`
+    : '<span class="nada">Sin video</span>';
+  refrescarPrevia();
+}
+function quitarMedia(cual){
+  $(cual==='imagen'?'fImagen':'fVideo').value='';
+  previsualizarMedia();
+}
+function actualizarNotaMedia(){
+  $('notaMedia').textContent = mediaNuevos.size
+    ? mediaNuevos.size+' archivo(s) nuevo(s) se incluirán en el ZIP'
+    : '';
+  pintarResumenExport();
+}
+
+/* ---------- Vista previa ---------- */
+function refrescarPrevia(){
+  const p=leerFormulario();
+  const letras=['A','B','C','D'].filter(L=>p['opcion_'+L.toLowerCase()]);
+  const media = p.video
+    ? `<div class="media"><video src="${escapar(fuenteMedia(p.video,"video"))}" muted loop autoplay playsinline></video></div>`
+    : p.imagen
+    ? `<div class="media"><img src="${escapar(fuenteMedia(p.imagen,"imagen"))}"></div>` : '';
+  $('previaPantalla').innerHTML=`
+    <div class="cat">${escapar((p.categoria||'CATEGORÍA').toUpperCase())}</div>
+    <div class="q">${escapar(p.pregunta||'Acá va la pregunta…')}</div>
+    ${media}
+    <div class="ops">${letras.map(L=>`
+      <div class="op ${L===p.correcta?'ok':''}">
+        <span class="l">${L}</span><span>${escapar(p['opcion_'+L.toLowerCase()])}</span>
+      </div>`).join('')||'<span style="opacity:.6;font-size:13px">Cargá opciones para verlas acá</span>'}
+    </div>`;
+}
+['fCategoria','fPregunta','fExplicacion'].forEach(id=>
+  document.addEventListener('input',e=>{ if(e.target.id===id) refrescarPrevia(); }));
+
+/* =====================================================================
+   CALENDARIO
+   ===================================================================== */
+const MESES=['enero','febrero','marzo','abril','mayo','junio','julio',
+  'agosto','septiembre','octubre','noviembre','diciembre'];
+function iso(a,m,d){return a+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');}
+
+function pintarCalendario(){
+  const a=mesVisto.getFullYear(), m=mesVisto.getMonth();
+  $('tituloMes').textContent=MESES[m]+' '+a;
+  const g=$('grillaCal'); g.innerHTML='';
+  ['LU','MA','MI','JU','VI','SÁ','DO'].forEach(d=>{
+    const e=document.createElement('div');e.className='cal-diasem';e.textContent=d;
+    g.appendChild(e);
+  });
+  const primero=new Date(a,m,1);
+  const desplaz=(primero.getDay()+6)%7;          // semana empieza lunes
+  const diasMes=new Date(a,m+1,0).getDate();
+  const hoy=new Date(); const hoyISO=iso(hoy.getFullYear(),hoy.getMonth(),hoy.getDate());
+  for(let i=0;i<desplaz;i++){
+    const e=document.createElement('div');e.className='cal-dia fuera';g.appendChild(e);
+  }
+  for(let d=1;d<=diasMes;d++){
+    const fISO=iso(a,m,d);
+    const celda=document.createElement('div');
+    celda.className='cal-dia'+(fISO===hoyISO?' hoy':'')+(fISO===diaElegidoISO?' elegido':'');
+    celda.onclick=()=>elegirDia(fISO);
+    const regla=calendario.dias?.[fISO];
+    let chip='';
+    if(regla?.categoria) chip=`<span class="asig">${escapar(regla.categoria)}</span>`;
+    else if(regla?.ids?.length) chip=`<span class="asig porids">${regla.ids.length} preg.</span>`;
+    celda.innerHTML=`<span class="n">${d}</span>${chip}`;
+    g.appendChild(celda);
+  }
+}
+function moverMes(delta){ mesVisto=new Date(mesVisto.getFullYear(),mesVisto.getMonth()+delta,1);
+  pintarCalendario(); }
+
+function elegirDia(fISO){
+  diaElegidoISO=fISO; pintarCalendario();
+  const [a,m,d]=fISO.split('-').map(Number);
+  $('tituloDia').textContent=new Date(a,m-1,d)
+    .toLocaleDateString('es-UY',{weekday:'long',day:'numeric',month:'long'});
+  $('controlesDia').classList.remove('oculto');
+  const regla=calendario.dias?.[fISO];
+  const modo=regla?.categoria?'categoria':regla?.ids?.length?'ids':'nada';
+  document.querySelector(`input[name=modoDia][value=${modo}]`).checked=true;
+  const sel=$('selCatDia');
+  sel.innerHTML=categoriasUnicas().map(c=>`<option>${escapar(c)}</option>`).join('')
+    ||'<option value="">(no hay categorías)</option>';
+  if(regla?.categoria) sel.value=regla.categoria;
+  pintarListaIdsDia(regla?.ids||[]);
+  cambioModoDia();
+}
+function cambioModoDia(){
+  const modo=document.querySelector('input[name=modoDia]:checked')?.value;
+  $('cajaCatDia').classList.toggle('oculto',modo!=='categoria');
+  $('cajaIdsDia').classList.toggle('oculto',modo!=='ids');
+}
+function pintarListaIdsDia(preMarcados){
+  const marcados = preMarcados
+    ?? [...document.querySelectorAll('#listaIdsDia input:checked')].map(i=>i.value);
+  const filtro=($('buscaIdsDia').value||'').toLowerCase();
+  $('listaIdsDia').innerHTML=preguntas
+    .filter(p=>!filtro||(p.pregunta+' '+p.categoria).toLowerCase().includes(filtro))
+    .map(p=>`<label><input type="checkbox" value="${escapar(p.id)}"
+      ${marcados.map(String).includes(String(p.id))?'checked':''}>
+      <span>#${escapar(p.id)} · ${escapar(p.pregunta.slice(0,70))}${p.pregunta.length>70?'…':''}</span></label>`)
+    .join('')||'<span class="nota">No hay preguntas cargadas.</span>';
+}
+function guardarDia(){
+  if(!diaElegidoISO) return;
+  const modo=document.querySelector('input[name=modoDia]:checked')?.value;
+  calendario.dias = calendario.dias||{};
+  if(modo==='categoria'){
+    const c=$('selCatDia').value;
+    if(!c) return avisar('Elegí una categoría');
+    calendario.dias[diaElegidoISO]={categoria:c};
+  } else if(modo==='ids'){
+    const ids=[...document.querySelectorAll('#listaIdsDia input:checked')].map(i=>i.value);
+    if(!ids.length) return avisar('Marcá al menos una pregunta');
+    calendario.dias[diaElegidoISO]={ids};
+  } else delete calendario.dias[diaElegidoISO];
+  pintarCalendario(); guardarBorrador(); avisar('Día guardado ✓');
+}
+function limpiarDia(){
+  if(!diaElegidoISO) return;
+  delete calendario.dias?.[diaElegidoISO];
+  pintarCalendario(); guardarBorrador(); avisar('Asignación quitada');
+}
+
+/* =====================================================================
+   IMPORTAR / EXPORTAR
+   ===================================================================== */
+function leerArchivoTexto(input, cb){
+  input.addEventListener('change', ev=>{
+    const f=ev.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>cb(r.result);
+    r.readAsText(f,'utf-8');
+    ev.target.value='';
+  });
+}
+leerArchivoTexto($('impCSVReemplaza'), t=>{
+  const nuevas=parseCSV(t);
+  if(!nuevas.length) return avisar('Ese CSV no tiene preguntas válidas');
+  preguntas=nuevas; limpiarFormulario(); pintarLista(); guardarBorrador();
+  avisar('Banco reemplazado: '+nuevas.length+' preguntas');
+});
+leerArchivoTexto($('impCSVAgrega'), t=>{
+  const nuevas=parseCSV(t);
+  if(!nuevas.length) return avisar('Ese CSV no tiene preguntas válidas');
+  nuevas.forEach(p=>{ p.id=proximoId(); preguntas.push(p); });
+  pintarLista(); guardarBorrador();
+  avisar('Agregadas '+nuevas.length+' preguntas');
+});
+leerArchivoTexto($('impJSON'), t=>{
+  try{
+    const c=JSON.parse(t);
+    calendario={default:c.default||{modo:'todas'}, dias:c.dias||{}};
+    pintarCalendario(); guardarBorrador(); avisar('Calendario importado ✓');
+  }catch(e){ avisar('Ese JSON no es válido'); }
+});
+
+$('impConfig').addEventListener('change', async ev=>{
+  const f=ev.target.files[0]; if(!f) return; ev.target.value='';
+  try{
+    const c=JSON.parse(await f.text());
+    if(c.evento) config.evento={...config.evento,...c.evento};
+    if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
+      items:Array.isArray(c.pausas.items)?c.pausas.items:[]};
+    if(typeof c.carpetaMedia==='string') config.carpetaMedia=c.carpetaMedia;
+    pintarEvento(); pintarPausas(); pintarCarpeta(); guardarBorrador();
+    avisar('Config importada ✓');
+  }catch(e){ avisar('Ese JSON no es válido'); }
+});
+
+async function traerDelSitio(){
+  let deCarpeta=false;
+  if((config.carpetaMedia||'').trim()){
+    await probarCarpeta(false);
+    const csv=textoCarpeta('preguntas.csv');
+    if(csv!=null){
+      try{ preguntas=parseCSV(csv); deCarpeta=true; }catch(e){}
+    }
+    const cal=textoCarpeta('calendario.json');
+    if(cal!=null){ try{const c=JSON.parse(cal);
+      calendario={default:c.default||{modo:'todas'},dias:c.dias||{}};}catch(e){} }
+    const cfg=textoCarpeta('config.json');
+    if(cfg!=null){ try{const c=JSON.parse(cfg);
+      if(c.evento) config.evento={...config.evento,...c.evento};
+      if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
+        items:Array.isArray(c.pausas.items)?c.pausas.items:config.pausas.items};
+    }catch(e){} }
+  }
+  if(!deCarpeta){
+    try{
+      const r=await fetch('preguntas.csv?t='+Date.now(),{cache:'no-store'});
+      if(!r.ok) throw 0;
+      preguntas=parseCSV(await r.text());
+      try{
+        const rc=await fetch('calendario.json?t='+Date.now(),{cache:'no-store'});
+        if(rc.ok){const c=await rc.json();
+          calendario={default:c.default||{modo:'todas'},dias:c.dias||{}};}
+      }catch(e){}
+      try{
+        const rf=await fetch('config.json?t='+Date.now(),{cache:'no-store'});
+        if(rf.ok){const c=await rf.json();
+          if(c.evento) config.evento={...config.evento,...c.evento};
+          if(c.pausas) config.pausas={cada:Math.max(0,+c.pausas.cada||0),
+            items:Array.isArray(c.pausas.items)?c.pausas.items:config.pausas.items};
+          if(typeof c.carpetaMedia==='string') config.carpetaMedia=c.carpetaMedia;}
+      }catch(e){}
+    }catch(e){
+      avisar('No pude leer preguntas ni de la carpeta ni del sitio publicado');
+      return;
+    }
+  }
+  limpiarFormulario(); pintarLista(); pintarCalendario();
+  pintarEvento(); pintarPausas(); pintarCarpeta(); guardarBorrador();
+  avisar((deCarpeta?'Datos de la carpeta de Drive':'Datos del sitio')+
+    ' cargados: '+preguntas.length+' preguntas');
+}
+
+function exportarCSV(){ descargar('preguntas.csv', aCSV(), 'text/csv;charset=utf-8'); }
+function exportarJSON(){ descargar('calendario.json',
+  JSON.stringify(calendario,null,2), 'application/json'); }
+function exportarConfig(){ descargar('config.json',
+  JSON.stringify(config,null,2), 'application/json'); }
+
+async function exportarZIP(){
+  if(!preguntas.length) return avisar('No hay preguntas para exportar');
+  const zip=new JSZip();
+  zip.file('preguntas.csv', aCSV());
+  zip.file('calendario.json', JSON.stringify(calendario,null,2));
+  zip.file('config.json', JSON.stringify(config,null,2));
+  for(const [ruta,archivo] of mediaNuevos) zip.file(ruta, archivo);
+  const blob=await zip.generateAsync({type:'blob'});
+  descargar('trivia-hca-datos.zip', blob);
+  avisar('ZIP listo: descomprimilo en la raíz del repo (todo va junto) y hacé push');
+}
+function pintarResumenExport(){
+  $('resumenExport').textContent =
+    preguntas.length+' preguntas · '+
+    Object.keys(calendario.dias||{}).length+' días asignados · '+
+    config.pausas.items.length+' pausas · '+
+    mediaNuevos.size+' archivos de media nuevos';
+}
+
+
+/* =====================================================================
+   PANTALLA: temática del evento + pausas
+   ===================================================================== */
+function pintarEvento(){
+  const e=config.evento;
+  ['Kicker','L1','Y','L2','Pie'].forEach(k=>{
+    const campo={'Kicker':'kicker','L1':'linea1','Y':'conector','L2':'linea2','Pie':'pie'}[k];
+    $('ev'+k).value=e[campo]||'';
+  });
+  previaEvento();
+}
+function tocarEvento(){
+  config.evento={
+    kicker:$('evKicker').value.trim(), linea1:$('evL1').value.trim(),
+    conector:$('evY').value.trim(),    linea2:$('evL2').value.trim(),
+    pie:$('evPie').value.trim()
+  };
+  previaEvento(); guardarBorrador();
+}
+function previaEvento(){
+  const e=config.evento;
+  const set=(id,v)=>{const n=$(id);n.textContent=v||'';n.style.display=v?'':'none';};
+  set('pvKicker',e.kicker); set('pvL1',e.linea1);
+  set('pvY',e.conector);    set('pvL2',e.linea2); set('pvPie',e.pie);
+}
+function agregarPausa(tipo){
+  const base={tipo, duracion: tipo==='video'?20:(tipo==='plaqueta'?10:6)};
+  if(tipo==='plaqueta') Object.assign(base,{kicker:'NOVEDADES',titulo:'',texto:'',imagen:''});
+  if(tipo==='video') base.src='';
+  config.pausas.items.push(base);
+  pintarPausas(); guardarBorrador();
+}
+function moverPausa(i,d){
+  const a=config.pausas.items, j=i+d;
+  if(j<0||j>=a.length) return;
+  [a[i],a[j]]=[a[j],a[i]]; pintarPausas(); guardarBorrador();
+}
+function borrarPausa(i){
+  config.pausas.items.splice(i,1); pintarPausas(); guardarBorrador();
+}
+function tocarPausa(i,campo,valor){
+  config.pausas.items[i][campo]= campo==='duracion' ? Math.max(3,+valor||8) : valor;
+  guardarBorrador();
+}
+function archivoPausa(ev,i,campo){
+  const f=ev.target.files[0]; if(!f) return;
+  ev.target.value='';
+  incorporarArchivo(f, nombre=>{
+    config.pausas.items[i][campo]=nombre;
+    pintarPausas(); guardarBorrador();
+  });
+}
+function pintarCarpeta(){
+  $('cfgCarpeta').value=config.carpetaMedia||'';
+  $('cfgClave').value=claveEdicion();
+}
+async function probarCarpeta(avisando){
+  const url=(config.carpetaMedia||'').trim();
+  const est=$('estadoCarpeta');
+  if(!url){ est.textContent='Sin carpeta configurada.'; TEXTOS_CARPETA={}; return; }
+  est.textContent='Consultando la carpeta…';
+  try{
+    const r=await fetch(url,{cache:'no-store'});
+    const m=await r.json();
+    if(typeof m!=='object'||Array.isArray(m)) throw 0;
+    MAPA_MEDIA = (m.archivos||m.textos) ? (m.archivos||{}) : m;
+    TEXTOS_CARPETA = m.textos||{};
+    const nombres=Object.keys(MAPA_MEDIA).sort();
+    $('dlDrive').innerHTML=nombres.map(n=>`<option value="${escapar(n)}">`).join('');
+    const partes=['✓ Conectada: <b>'+nombres.length+'</b> archivo(s) de media'];
+    const csv=textoCarpeta('preguntas.csv');
+    if(csv!=null){
+      let n=0; try{n=parseCSV(csv).length;}catch(err){}
+      partes.push('<b>preguntas</b> en la carpeta ('+n+') — las pantallas leen de acá');
+    } else partes.push('sin archivo de preguntas (usarán el del repo)');
+    if(textoCarpeta('calendario.json')!=null) partes.push('calendario ✓');
+    if(textoCarpeta('config.json')!=null) partes.push('config ✓');
+    est.innerHTML=partes.join(' · ');
+    if(avisando) avisar('Carpeta conectada ✓');
+    previsualizarMedia();
+  }catch(e2){
+    TEXTOS_CARPETA={};
+    est.textContent='No pude leer la carpeta. Revisá que la URL sea la del Apps Script (/exec) y que el acceso sea "Cualquier persona".';
+    if(avisando) avisar('No pude conectar la carpeta');
+  }
+}
+let TEXTOS_CARPETA={};
+function guardarClave(v){ try{localStorage.setItem('trivia-hca-clave',v.trim());}catch(e){} }
+function claveEdicion(){ try{return localStorage.getItem('trivia-hca-clave')||'';}catch(e){return '';} }
+function leerBase64(f){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(String(r.result).split(',')[1]);
+    r.onerror=rej; r.readAsDataURL(f);
+  });
+}
+async function publicarEnDrive(){
+  const url=(config.carpetaMedia||'').trim(), clave=claveEdicion();
+  if(!url) return avisar('Primero configurá la URL del script (Pantalla → Carpeta)');
+  if(!clave) return avisar('Falta la clave de edición (Pantalla → Carpeta)');
+  if(!preguntas.length) return avisar('No hay preguntas para publicar');
+  avisar('Publicando en Drive…');
+  try{
+    const r=await fetch(url,{method:'POST',body:JSON.stringify({
+      clave, accion:'guardar', preguntas, calendario, config})});
+    const j=await r.json();
+    if(!j.ok) throw new Error(j.error||'');
+    avisar('✓ Publicado — las pantallas lo toman en ≤5 minutos');
+  }catch(e){
+    avisar('No se pudo publicar'+(e.message?': '+e.message:' (revisá URL y clave)'));
+  }
+}
+async function incorporarArchivo(f, alCampo){
+  const nombre=normalizarNombre(f.name);
+  const url=(config.carpetaMedia||'').trim(), clave=claveEdicion();
+  if(url && clave && f.size<=30*1024*1024){
+    avisar('Subiendo a la carpeta de Drive…');
+    try{
+      const base64=await leerBase64(f);
+      const r=await fetch(url,{method:'POST',body:JSON.stringify({
+        clave, accion:'subir', nombre, mime:f.type||'application/octet-stream', base64})});
+      const j=await r.json();
+      if(!j.ok) throw new Error(j.error||'');
+      MAPA_MEDIA[nombre]=j.id;
+      alCampo(nombre);
+      avisar('✓ Subido a Drive: '+nombre);
+      return;
+    }catch(e){ avisar('No pude subirlo a Drive, va al ZIP'); }
+  } else if(url && clave){
+    avisar('Pesa más de 30 MB: va al ZIP (o subilo a mano a la carpeta)');
+  }
+  mediaNuevos.set(nombre,f);
+  alCampo(nombre);
+  actualizarNotaMedia();
+}
+function textoCarpeta(nombre){
+  if(TEXTOS_CARPETA[nombre]!=null) return TEXTOS_CARPETA[nombre];
+  const k=Object.keys(TEXTOS_CARPETA).find(n=>n.toLowerCase()===nombre);
+  return k ? TEXTOS_CARPETA[k] : null;
+}
+const NOMBRE_PAUSA={splash:'Portada del evento', plaqueta:'Plaqueta', video:'Video'};
+function pintarPausas(){
+  $('pausasCada').value=config.pausas.cada;
+  const cont=$('listaPausas'); cont.innerHTML='';
+  if(!config.pausas.items.length)
+    cont.innerHTML='<p class="nota">No hay pausas: el juego corre sin cortes.</p>';
+  config.pausas.items.forEach((it,i)=>{
+    const d=document.createElement('div');
+    d.style.cssText='border:1.5px solid var(--borde);border-radius:14px;padding:14px';
+    let cuerpo='';
+    if(it.tipo==='plaqueta'){
+      cuerpo=`
+      <div class="fila dos">
+        <div><label>Etiqueta chica</label>
+          <input value="${escapar(it.kicker||'')}" placeholder="NOVEDADES"
+            oninput="tocarPausa(${i},'kicker',this.value)"></div>
+        <div><label>Título</label>
+          <input value="${escapar(it.titulo||'')}" placeholder="Feria de Ciencias"
+            oninput="tocarPausa(${i},'titulo',this.value)"></div>
+      </div>
+      <div><label>Texto</label>
+        <textarea rows="2" placeholder="Detalle del anuncio…"
+          oninput="tocarPausa(${i},'texto',this.value)">${escapar(it.texto||'')}</textarea></div>
+      <div class="fila dos" style="align-items:end">
+        <div><label>Imagen (opcional)</label>
+          <input value="${escapar(it.imagen||'')}" list="dlDrive" placeholder="afiche.jpg o link de Drive"
+            oninput="tocarPausa(${i},'imagen',this.value)"></div>
+        <label class="btn btn-fantasma btn-archivo btn-mini">Subir imagen
+          <input type="file" accept="image/*" onchange="archivoPausa(event,${i},'imagen')"></label>
+      </div>`;
+    } else if(it.tipo==='video'){
+      cuerpo=`
+      <div class="fila dos" style="align-items:end">
+        <div><label>Archivo de video</label>
+          <input value="${escapar(it.src||'')}" list="dlDrive" placeholder="promo.mp4 o link de Drive"
+            oninput="tocarPausa(${i},'src',this.value)"></div>
+        <label class="btn btn-fantasma btn-archivo btn-mini">Subir video
+          <input type="file" accept="video/mp4,video/webm" onchange="archivoPausa(event,${i},'src')"></label>
+      </div>`;
+    } else {
+      cuerpo='<p class="nota" style="margin:4px 0 0">Muestra la portada con la temática del evento.</p>';
+    }
+    d.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <b style="flex:1">${i+1}. ${NOMBRE_PAUSA[it.tipo]||it.tipo}</b>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--texto-suave)">
+          Segundos <input type="number" min="3" max="180" value="${+it.duracion||8}"
+            style="width:70px" oninput="tocarPausa(${i},'duracion',this.value)"></label>
+        <button class="btn btn-fantasma btn-mini" onclick="moverPausa(${i},-1)">↑</button>
+        <button class="btn btn-fantasma btn-mini" onclick="moverPausa(${i},1)">↓</button>
+        <button class="btn btn-fantasma btn-mini" onclick="borrarPausa(${i})">✕</button>
+      </div>${cuerpo}`;
+    cont.appendChild(d);
+  });
+}
+
+/* =====================================================================
+   BORRADOR LOCAL (falla en silencio si el entorno no lo permite)
+   ===================================================================== */
+let tmrBorrador=null;
+function guardarBorrador(){
+  clearTimeout(tmrBorrador);
+  tmrBorrador=setTimeout(()=>{
+    try{
+      localStorage.setItem('trivia-hca-borrador',
+        JSON.stringify({preguntas,calendario,config,fecha:Date.now()}));
+    }catch(e){}
+  },600);
+  pintarResumenExport();
+}
+function restaurarBorrador(){
+  try{
+    const crudo=localStorage.getItem('trivia-hca-borrador');
+    if(!crudo) return;
+    const b=JSON.parse(crudo);
+    if(b.preguntas?.length || Object.keys(b.calendario?.dias||{}).length){
+      preguntas=b.preguntas||[];
+      calendario=b.calendario||{default:{modo:'todas'},dias:{}};
+      if(b.config){
+        if(typeof b.config.carpetaMedia==='string') config.carpetaMedia=b.config.carpetaMedia;
+        config.evento={...config.evento,...(b.config.evento||{})};
+        if(b.config.pausas) config.pausas={
+          cada:Math.max(0,+b.config.pausas.cada||0),
+          items:Array.isArray(b.config.pausas.items)?b.config.pausas.items:config.pausas.items};
+      }
+      $('avisoBorrador').style.display='inline-block';
+    }
+  }catch(e){}
+}
+
+/* =====================================================================
+   ARRANQUE
+   ===================================================================== */
+armarCamposOpciones();
+conectarArchivo('archivoImagen','fImagen','imagen');
+conectarArchivo('archivoVideo','fVideo','video');
+restaurarBorrador();
+limpiarFormulario();
+pintarLista();
+pintarEvento();
+pintarPausas();
+pintarCarpeta();
+if(config.carpetaMedia) probarCarpeta(false);
+pintarResumenExport();
+</script>
+</body>
+</html>
