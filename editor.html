@@ -282,6 +282,42 @@ input[type=file]{display:none}
 <main>
 <!-- ==================== PREGUNTAS ==================== -->
 <section class="pestana activa" id="p-preguntas">
+
+  <details class="panel" style="margin-bottom:18px" id="panelIA">
+    <summary style="cursor:pointer;font-family:var(--f-display);font-weight:800;
+      font-size:17px;color:var(--azul-hca)">✨ Generar preguntas con IA
+      <span class="nota" style="font-weight:600"> — armá un prompt, pegá el CSV que te devuelva y listo</span>
+    </summary>
+    <div style="margin-top:16px">
+      <div class="fila tres" style="grid-template-columns:1.4fr .6fr 1fr">
+        <div><label>Tema / categoría</label>
+          <input id="iaTema" placeholder="Sistema Solar, Energía, Historia del HCA…"></div>
+        <div><label>Cantidad</label>
+          <input type="number" id="iaCantidad" min="1" max="60" value="15"></div>
+        <div><label>Nivel</label>
+          <select id="iaNivel">
+            <option>Primaria</option>
+            <option selected>Ciclo Básico</option>
+            <option>Bachillerato</option>
+            <option>Público general</option>
+          </select></div>
+      </div>
+      <div style="margin-top:12px"><label>Indicaciones extra (opcional)</label>
+        <input id="iaExtra" placeholder="ej.: que incluya 3 sobre Uruguay, tono divertido…"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <button class="btn btn-primario" onclick="copiarPromptIA()">📋 Copiar prompt</button>
+        <button class="btn btn-secundario" onclick="abrirEnClaude()">Abrir en Claude ↗</button>
+      </div>
+      <div style="margin-top:18px"><label>Pegá acá el CSV que devolvió la IA</label>
+        <textarea id="iaCSV" rows="5" style="font-family:monospace;font-size:13px"
+          placeholder="1,Sistema Solar,¿Cuál es el planeta más grande?,Júpiter,Marte,Venus,Saturno,A,Su masa duplica la de todos los demás planetas juntos.,,,1"></textarea></div>
+      <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+        <button class="btn btn-secundario" onclick="agregarCSVIA()">＋ Agregar al banco</button>
+        <span class="nota" id="iaEstado"></span>
+      </div>
+    </div>
+  </details>
+
   <div class="dos-columnas">
 
     <div class="panel panel-lista">
@@ -843,6 +879,77 @@ function eliminarPregunta(){
   limpiarFormulario(); pintarLista(); guardarBorrador(); avisar('Eliminada');
 }
 
+/* ---------- Generador de preguntas con IA ---------- */
+function promptIA(){
+  const tema=($('iaTema').value||'cultura general').trim();
+  const n=Math.min(60,Math.max(1,+$('iaCantidad').value||15));
+  const nivel=$('iaNivel').value;
+  const extra=$('iaExtra').value.trim();
+  const desdeId=(preguntas.reduce((m,p)=>Math.max(m,+p.id||0),0))+1;
+  return `Generá ${n} preguntas de opción múltiple sobre "${tema}" para la pantalla de trivia de un colegio (nivel: ${nivel}), en formato CSV.
+
+FORMATO EXACTO — una línea por pregunta, SIN encabezados, SIN numeración, SIN texto antes ni después, SIN markdown ni bloques de código:
+id,categoria,pregunta,opcion_a,opcion_b,opcion_c,opcion_d,correcta,explicacion,imagen,video,activa
+
+REGLAS:
+- id: números consecutivos empezando en ${desdeId}
+- categoria: "${tema}" en todas las líneas
+- pregunta: máximo 110 caracteres, clara, pensada para leerse de lejos en una TV
+- opcion_a a opcion_d: cortas (máx. 45 caracteres), plausibles; en algunas podés dejar opcion_c y opcion_d vacías
+- correcta: SOLO la letra A, B, C o D (variá cuál es la correcta, no siempre A)
+- explicacion: dato curioso o explicación breve (máx. 140 caracteres); NO empieces con "¿Sabías que"
+- imagen y video: dejalos vacíos
+- activa: 1
+- Si un texto lleva coma o comillas, encerralo entre comillas dobles y duplicá las comillas internas
+- Español rioplatense neutro, ortografía impecable, sin repetir preguntas${extra?`
+- ${extra}`:''}
+
+Respondé ÚNICAMENTE con las ${n} líneas CSV.`;
+}
+function copiarPromptIA(){
+  const t=promptIA();
+  const fin=()=>avisar('Prompt copiado: pegalo en tu IA favorita');
+  if(navigator.clipboard&&navigator.clipboard.writeText)
+    navigator.clipboard.writeText(t).then(fin,()=>copiaVieja(t,fin));
+  else copiaVieja(t,fin);
+}
+function copiaVieja(t,fin){
+  const ta=document.createElement('textarea');
+  ta.value=t; document.body.appendChild(ta); ta.select();
+  try{document.execCommand('copy');}catch(e){}
+  ta.remove(); fin();
+}
+function abrirEnClaude(){
+  window.open('https://claude.ai/new?q='+encodeURIComponent(promptIA()),'_blank');
+}
+function agregarCSVIA(){
+  let t=($('iaCSV').value||'').trim();
+  if(!t){ $('iaEstado').textContent='Pegá primero el CSV.'; return; }
+  t=t.replace(/^```[a-z]*\n?/i,'').replace(/```\s*$/,'').trim(); // por si vino con markdown
+  if(!/^id\s*,\s*categoria/i.test(t))
+    t='id,categoria,pregunta,opcion_a,opcion_b,opcion_c,opcion_d,correcta,explicacion,imagen,video,activa\n'+t;
+  let nuevas=[];
+  try{ nuevas=parseCSV(t); }catch(e){ $('iaEstado').textContent='No pude leer ese CSV.'; return; }
+  let maxId=preguntas.reduce((m,p)=>Math.max(m,+p.id||0),0);
+  const temaDef=($('iaTema').value||'').trim();
+  let ok=0, mal=0;
+  nuevas.forEach(p=>{
+    const c=String(p.correcta||'').trim().toUpperCase();
+    const tieneCorrecta=['A','B','C','D'].includes(c)&&(p['opcion_'+c.toLowerCase()]||'').trim();
+    if(!p.pregunta||!(p.opcion_a||'').trim()||!(p.opcion_b||'').trim()||!tieneCorrecta){ mal++; return; }
+    p.id=String(++maxId);
+    p.correcta=c;
+    if(!p.categoria) p.categoria=temaDef;
+    if(p.activa!=='0') p.activa='1';
+    preguntas.push(p); ok++;
+  });
+  pintarLista(); guardarBorrador();
+  $('iaCSV').value='';
+  $('iaEstado').textContent=ok+' agregadas'+(mal?(' · '+mal+' descartadas por formato'):'')+
+    (ok?' — tocá ⬆ Publicar para mandarlas a la base':'');
+  if(ok) avisar(ok+' preguntas nuevas en el banco ✓');
+}
+
 /* ---------- Media ---------- */
 /* ---------------- Multimedia desde Google Drive ----------------
    Se puede pegar el link de Drive tal cual (Compartir → cualquiera con el
@@ -1282,6 +1389,7 @@ function archivoPausa(ev,i,campo){
   incorporarArchivo(f, nombre=>{
     config.pausas.items[i][campo]=nombre;
     pintarPausas(); guardarBorrador();
+    if(campo==='src') autoDuracion(i);
   });
 }
 function pintarCarpeta(){
@@ -1372,6 +1480,31 @@ async function publicarEnDrive(){
     avisar('No se pudo publicar'+(e.message?': '+e.message:' (revisá URL y clave)'));
   }
 }
+async function medirVideoEditor(ruta){
+  return new Promise(res=>{
+    const v=document.createElement('video');
+    v.preload='metadata'; v.muted=true;
+    let listo=false;
+    const fin=x=>{ if(listo) return; listo=true;
+      try{v.removeAttribute('src');v.load();}catch(e){} res(x); };
+    const tm=setTimeout(()=>fin(null), 10000);
+    v.onloadedmetadata=()=>{ clearTimeout(tm);
+      fin(isFinite(v.duration)&&v.duration>0 ? Math.ceil(v.duration) : null); };
+    v.onerror=()=>{ clearTimeout(tm); fin(null); };
+    try{ v.src=fuenteMedia(ruta,'video'); }catch(e){ clearTimeout(tm); fin(null); }
+  });
+}
+async function autoDuracion(i){
+  const it=config.pausas.items[i];
+  if(!it || it.tipo!=='video' || !it.src){ avisar('Primero indicá el video'); return; }
+  avisar('Midiendo el video…');
+  const d=await medirVideoEditor(it.src);
+  if(d){
+    it.duracion=d+1;                       // +1 s de colita para el fundido
+    pintarPausas(); guardarBorrador();
+    avisar('El video dura '+d+' s → pausa de '+(d+1)+' s');
+  } else avisar('No pude leer la duración (¿la ruta está bien?)');
+}
 async function incorporarArchivo(f, alCampo){
   const nombre=normalizarNombre(f.name);
   const url=(config.carpetaMedia||'').trim(), clave=claveEdicion();
@@ -1453,10 +1586,14 @@ function pintarPausas(){
       <div class="fila dos" style="align-items:end">
         <div><label>Archivo de video</label>
           <input value="${escapar(it.src||'')}" list="dlDrive" placeholder="promo.mp4 o link de Drive"
-            oninput="tocarPausa(${i},'src',this.value)"></div>
+            oninput="tocarPausa(${i},'src',this.value)"
+            onchange="autoDuracion(${i})"></div>
         <label class="btn btn-fantasma btn-archivo btn-mini">Subir video
           <input type="file" accept="video/mp4,video/webm" onchange="archivoPausa(event,${i},'src')"></label>
-      </div>`;
+      </div>
+      <p class="nota" style="margin-top:8px">La duración se mide sola del archivo
+        (el video se ve completo, sin cortes).
+        <button class="btn btn-fantasma btn-mini" onclick="autoDuracion(${i})">⟳ volver a medir</button></p>`;
     } else if(it.tipo==='clima'){
       cuerpo='<p class="nota" style="margin:4px 0 0">Pronóstico semanal de Montevideo (Open-Meteo). Se actualiza solo cada 30 min.</p>';
     } else {
